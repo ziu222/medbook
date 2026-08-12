@@ -1,3 +1,5 @@
+import { ImageSlot } from './ImageSlot';
+
 const INTRO_LINKS = ['Tổng quan Bệnh viện', 'Những cột mốc đáng nhớ', 'Cơ sở vật chất', 'Các danh hiệu cao quý', 'Đội ngũ Bác sĩ'];
 
 const UTILITY_LINKS = [
@@ -53,7 +55,9 @@ export function Footer() {
         {/* top row: logo + newsletter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <img src="/logo_footer.webp" alt="Bệnh viện Quân y 175" style={{ height: '52px', width: 'auto', display: 'block' }} />
+            <div style={{ width: '52px', height: '52px' }}>
+              <ImageSlot placeholder="Logo" shape="circle" />
+            </div>
             <div style={{ lineHeight: 1.25 }}>
               <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', letterSpacing: '.5px' }}>MILITARY HOSPITAL</div>
               <div style={{ fontSize: '13.5px', color: '#9CC3B1', letterSpacing: '.3px' }}>BỆNH VIỆN QUÂN Y 175</div>
