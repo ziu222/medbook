@@ -21,6 +21,7 @@ Thumbs.db
 .agents/
 .tmp/
 .claude/settings.local.json
+CLAUDE.md
 
 # misc
 *.log
