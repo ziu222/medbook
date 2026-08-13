@@ -1,0 +1,6 @@
+AGENTS.md
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfvars
