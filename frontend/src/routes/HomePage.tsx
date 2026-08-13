@@ -6,6 +6,7 @@ import { DoctorTeamSection } from './home/DoctorTeamSection';
 import { StatsSection } from './home/StatsSection';
 import { InfrastructureSection } from './home/InfrastructureSection';
 import { FeedbackFormSection } from './home/FeedbackFormSection';
+import { StepsSection } from './home/StepsSection';
 
 export function HomePage() {
   return (
@@ -18,6 +19,7 @@ export function HomePage() {
         <StatsSection />
         <InfrastructureSection />
         <FeedbackFormSection />
+        <StepsSection />
       </main>
       <Footer />
     </div>
