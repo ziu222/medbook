@@ -4,6 +4,7 @@ import { HeroSection } from './home/HeroSection';
 import { SpecialtiesSection } from './home/SpecialtiesSection';
 import { DoctorTeamSection } from './home/DoctorTeamSection';
 import { StatsSection } from './home/StatsSection';
+import { InfrastructureSection } from './home/InfrastructureSection';
 
 export function HomePage() {
   return (
@@ -14,6 +15,7 @@ export function HomePage() {
         <SpecialtiesSection />
         <DoctorTeamSection />
         <StatsSection />
+        <InfrastructureSection />
       </main>
       <Footer />
     </div>
