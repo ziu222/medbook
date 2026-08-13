@@ -68,12 +68,13 @@ export function InfrastructureSection() {
         <p style={{ color: 'var(--ink2)', fontSize: '16px', lineHeight: 1.65, margin: '0 0 22px' }}>{active.description}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} style={{ aspectRatio: '3 / 4', borderRadius: '14px', overflow: 'hidden', background: 'var(--tint)' }}>
+            <div key={n} className="card-hover-lift" style={{ aspectRatio: '3 / 4', borderRadius: '14px', overflow: 'hidden', background: 'var(--tint)' }}>
               <ImageSlot placeholder="Ảnh" shape="rect" fit="cover" />
             </div>
           ))}
         </div>
         <div
+          className="btn-hover"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

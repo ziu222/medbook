@@ -33,12 +33,12 @@ export function DoctorTeamSection() {
       </div>
 
       <div style={{ position: 'relative' }}>
-        <div style={{ ...arrowButtonStyle, left: 0 }} onClick={() => scrollBy(-340)}>
+        <div className="btn-hover" style={{ ...arrowButtonStyle, left: 0 }} onClick={() => scrollBy(-340)}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="m15 6-6 6 6 6" />
           </svg>
         </div>
-        <div style={{ ...arrowButtonStyle, right: 0 }} onClick={() => scrollBy(340)}>
+        <div className="btn-hover" style={{ ...arrowButtonStyle, right: 0 }} onClick={() => scrollBy(340)}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="m9 6 6 6-6 6" />
           </svg>
@@ -57,7 +57,10 @@ export function DoctorTeamSection() {
         >
           {doctorTeam.map((doctor) => (
             <div key={doctor.id} style={{ flex: '0 0 160px', scrollSnapAlign: 'start', cursor: 'pointer' }}>
-              <div style={{ aspectRatio: '3 / 4', borderRadius: '18px', overflow: 'hidden', background: 'var(--tint)', boxShadow: 'var(--sh-sm)' }}>
+              <div
+                className="card-hover-lift"
+                style={{ aspectRatio: '3 / 4', borderRadius: '18px', overflow: 'hidden', background: 'var(--tint)', boxShadow: 'var(--sh-sm)' }}
+              >
                 <ImageSlot placeholder={doctor.name} shape="rect" fit="cover" />
               </div>
               <div style={{ textAlign: 'center', marginTop: '13px' }}>

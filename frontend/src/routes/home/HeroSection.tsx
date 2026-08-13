@@ -71,6 +71,7 @@ export function HeroSection() {
             />
           </div>
           <span
+            className="btn-hover"
             style={{
               padding: '14px 30px',
               borderRadius: '13px',
@@ -90,6 +91,7 @@ export function HeroSection() {
             chip.emphasis ? (
               <span
                 key={chip.label}
+                className="btn-hover"
                 style={{
                   padding: '9px 17px',
                   borderRadius: '999px',
@@ -112,6 +114,7 @@ export function HeroSection() {
             ) : (
               <span
                 key={chip.label}
+                className="link-hover"
                 style={{
                   padding: '9px 17px',
                   borderRadius: '999px',

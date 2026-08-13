@@ -79,6 +79,7 @@ export function SpecialtiesSection() {
         {SPECIALTIES.map((specialty) => (
           <div
             key={specialty.label}
+            className="card-hover"
             style={{
               background: '#fff',
               border: '1px solid var(--line)',

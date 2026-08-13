@@ -71,6 +71,7 @@ export function Header({ active = 'home' }: HeaderProps) {
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span
+            className="link-hover"
             style={{
               padding: '11px 20px',
               borderRadius: '12px',
@@ -84,6 +85,7 @@ export function Header({ active = 'home' }: HeaderProps) {
             Đăng nhập
           </span>
           <span
+            className="btn-hover"
             style={{
               padding: '12px 22px',
               borderRadius: '12px',
