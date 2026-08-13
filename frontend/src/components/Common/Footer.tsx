@@ -1,5 +1,3 @@
-import { ImageSlot } from './ImageSlot';
-
 const INTRO_LINKS = ['Tổng quan Bệnh viện', 'Những cột mốc đáng nhớ', 'Cơ sở vật chất', 'Các danh hiệu cao quý', 'Đội ngũ Bác sĩ'];
 
 const UTILITY_LINKS = [
@@ -18,7 +16,7 @@ function FooterLinkColumn({ title, links }: { title: string; links: string[] }) 
       <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', marginBottom: '16px' }}>{title}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', fontSize: '14px' }}>
         {links.map((link) => (
-          <span key={link} style={{ cursor: 'pointer', color: '#BDD8CB' }}>
+          <span key={link} className="footer-link-hover" style={{ cursor: 'pointer', color: '#BDD8CB' }}>
             {link}
           </span>
         ))}
@@ -30,6 +28,7 @@ function FooterLinkColumn({ title, links }: { title: string; links: string[] }) 
 function SocialIcon({ label }: { label: string }) {
   return (
     <span
+      className="btn-hover"
       style={{
         width: '38px',
         height: '38px',
@@ -48,6 +47,27 @@ function SocialIcon({ label }: { label: string }) {
   );
 }
 
+function HospitalLogoMark() {
+  return (
+    <div
+      style={{
+        width: '52px',
+        height: '52px',
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,.08)',
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5Z" fill="#06984F" />
+        <path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
 export function Footer() {
   return (
     <footer style={{ background: 'var(--forest)', marginTop: '32px' }}>
@@ -55,9 +75,7 @@ export function Footer() {
         {/* top row: logo + newsletter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '52px', height: '52px' }}>
-              <ImageSlot placeholder="Logo" shape="circle" />
-            </div>
+            <HospitalLogoMark />
             <div style={{ lineHeight: 1.25 }}>
               <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', letterSpacing: '.5px' }}>MILITARY HOSPITAL</div>
               <div style={{ fontSize: '13.5px', color: '#9CC3B1', letterSpacing: '.3px' }}>BỆNH VIỆN QUÂN Y 175</div>
@@ -82,6 +100,7 @@ export function Footer() {
                 }}
               />
               <span
+                className="btn-hover"
                 style={{
                   padding: '12px 24px',
                   borderRadius: '11px',
@@ -129,6 +148,7 @@ export function Footer() {
             <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', marginBottom: '16px' }}>Tải ứng dụng</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <span
+                className="btn-hover"
                 style={{
                   padding: '9px 14px',
                   borderRadius: '10px',
@@ -144,6 +164,7 @@ export function Footer() {
                 Google Play
               </span>
               <span
+                className="btn-hover"
                 style={{
                   padding: '9px 14px',
                   borderRadius: '10px',
@@ -175,9 +196,13 @@ export function Footer() {
           }}
         >
           <div style={{ display: 'flex', gap: '10px', fontSize: '13.5px', color: '#BDD8CB' }}>
-            <span style={{ cursor: 'pointer' }}>Chính sách bảo mật thông tin website</span>
+            <span className="footer-link-hover" style={{ cursor: 'pointer' }}>
+              Chính sách bảo mật thông tin website
+            </span>
             <span>|</span>
-            <span style={{ cursor: 'pointer' }}>Điều khoản sử dụng website</span>
+            <span className="footer-link-hover" style={{ cursor: 'pointer' }}>
+              Điều khoản sử dụng website
+            </span>
           </div>
           <div style={{ fontSize: '13px', color: '#8FBBA6', maxWidth: '720px' }}>
             Bản quyền thuộc về Bệnh viện Quân y 175 © 2026. Giấy phép hoạt động Trang thông tin điện tử trên Internet số
