@@ -23,7 +23,6 @@ class AppointmentService:
         return await self.repo.create(appointment)
 
     async def delete_appointment(self, appointment_id: int, user_id: int) -> bool:
-        """Trả về False nếu không tìm thấy hoặc không có quyền."""
         appointment = await self.repo.get_by_id(appointment_id)
         if not appointment:
             return False

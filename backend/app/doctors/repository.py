@@ -10,7 +10,6 @@ class DoctorRepository:
         self.db = db
 
     async def get_all(self) -> list[Doctor]:
-        """Lấy tất cả bác sĩ kèm thông tin chuyên khoa."""
         query = (
             select(Doctor)
             .options(selectinload(Doctor.specialty))
@@ -24,12 +23,6 @@ class DoctorRepository:
         specialty_id: int | None = None,
         name: str | None = None,
     ) -> list[Doctor]:
-        """
-        Tìm kiếm bác sĩ theo chuyên khoa và/hoặc tên.
-
-        - specialty_id: lọc theo chuyên khoa (VD: 1 = Tim mạch)
-        - name: tìm kiếm tên không phân biệt hoa thường (ilike)
-        """
         query = (
             select(Doctor)
             .options(selectinload(Doctor.specialty))
@@ -46,7 +39,6 @@ class DoctorRepository:
         return list(result.scalars().all())
 
     async def get_by_id(self, doctor_id: int) -> Doctor | None:
-        """Lấy chi tiết 1 bác sĩ theo ID."""
         query = (
             select(Doctor)
             .options(selectinload(Doctor.specialty))

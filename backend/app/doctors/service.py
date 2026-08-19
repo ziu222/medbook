@@ -16,10 +16,6 @@ class DoctorService:
         specialty_id: int | None = None,
         name: str | None = None,
     ) -> list[Doctor]:
-        """
-        Tìm kiếm bác sĩ theo chuyên khoa và/hoặc từ khoá tên.
-        Nếu không truyền tham số nào → trả về tất cả bác sĩ.
-        """
         return await self.repo.search(specialty_id=specialty_id, name=name)
 
     async def get_doctor_by_id(self, doctor_id: int) -> Doctor | None:
