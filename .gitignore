@@ -1,4 +1,31 @@
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/*.local
+frontend/coverage/
+
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# env
+.env
+.env.local
+*.local
+
+# agent / local scratch
+.agents/
+.tmp/
+.claude/settings.local.json
+CLAUDE.md
 AGENTS.md
+
+# misc
+*.log
 
 # Terraform
 **/.terraform/*
@@ -8,4 +35,4 @@ AGENTS.md
 __pycache__/
 *.py[cod]
 .venv/
-.env
+.claude/

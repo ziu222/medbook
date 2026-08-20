@@ -1,0 +1,240 @@
+:root {
+  --ink: #14261f;
+  --ink2: #3b4e45;
+  --muted: #6e8478;
+  --faint: #9daea4;
+  --brand: #12946c;
+  --brand-d: #0c7a55;
+  --brand-grad: linear-gradient(135deg, #18a981, #0b7a56);
+  --tint: #eaf4ee;
+  --tint2: #f2f8f4;
+  --soft: #dbeee3;
+  --line: #e7efea;
+  --forest: #123a2b;
+  --forest2: #0e2e22;
+  --peach: #fde7d6;
+  --sand: #fbf4ea;
+  --gold: #f4a62a;
+  --page: #f6f5ef;
+  --card: #ffffff;
+  --sh-sm: 0 2px 10px rgba(16, 54, 40, 0.05);
+  --sh: 0 12px 34px rgba(16, 54, 40, 0.07);
+  --sh-lg: 0 26px 64px rgba(16, 54, 40, 0.11);
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'Be Vietnam Pro',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--brand-d);
+}
+
+::selection {
+  background: #bde7d2;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade-up {
+  animation: fadeUp 0.4s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Reusable hover motion — inline styles can't do :hover, so buttons/cards opt in via className. */
+.btn-hover {
+  transition:
+    filter 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.btn-hover:hover {
+  filter: brightness(1.05);
+}
+
+.link-hover {
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+/* !important: the resting color/border on these links comes from an inline
+   style attribute, which otherwise always outranks a class-based :hover rule. */
+.link-hover:hover {
+  color: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+.card-hover {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sh);
+  border-color: transparent;
+}
+
+.card-hover-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--sh);
+}
+
+.footer-link-hover {
+  transition: color 0.15s ease;
+}
+.footer-link-hover:hover {
+  color: #fff !important;
+}
+
+/* Slide-in background wipe for nav items — pseudo-element clipped by overflow:hidden. */
+.nav-hover-slide {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.2s ease;
+}
+.nav-hover-slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--tint);
+  transform: translateX(-100%);
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
+.nav-hover-slide:hover {
+  color: var(--brand) !important;
+}
+.nav-hover-slide:hover::before {
+  transform: translateX(0);
+}
+
+/* Tab underline that slides between positions instead of snapping. */
+.tab-slide {
+  position: relative;
+  transition: color 0.2s ease;
+}
+.tab-slide::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+.tab-slide:hover {
+  color: var(--brand) !important;
+}
+.tab-slide.active::after {
+  transform: scaleX(1);
+}
+
+/* Carousel arrow icon nudges toward its scroll direction on hover. */
+.carousel-arrow svg {
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+.carousel-arrow.prev:hover svg {
+  transform: translateX(-3px);
+}
+.carousel-arrow.next:hover svg {
+  transform: translateX(3px);
+}
+
+/* Photo zoom inside a lifted card — secondary motion layer under .card-hover-lift. */
+.img-zoom {
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+.card-hover-lift:hover .img-zoom {
+  transform: scale(1.06);
+}
+
+/* Mood pill: smooth the selected/hover swap and pop the active pick. */
+.mood-pill {
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mood-pill:hover {
+  border-color: var(--brand) !important;
+}
+.mood-pill.active {
+  transform: scale(1.05);
+}
+
+/* Arrow nudges right on hover — pairs with .btn-hover on the CTA wrapper. */
+.cta-arrow-slide svg {
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
+}
+.cta-arrow-slide:hover svg {
+  transform: translateX(4px);
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
