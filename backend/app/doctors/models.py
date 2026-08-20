@@ -1,13 +1,16 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Numeric,
     String,
     Text,
+    Time,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -55,3 +58,27 @@ class DoctorProfile(Base):
     )
 
     specialty: Mapped[Specialty] = relationship()
+
+
+class DoctorWorkingDay(Base):
+    __tablename__ = "doctor_working_days"
+    # ponytail: one interval per day; allow multiple non-overlapping rows when split shifts are required.
+    __table_args__ = (
+        UniqueConstraint("doctor_id", "work_date", name="uq_doctor_work_date"),
+        CheckConstraint("start_time < end_time", name="working_time_order"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="CASCADE"),
+        index=True,
+    )
+    work_date: Mapped[date] = mapped_column(Date)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

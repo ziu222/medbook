@@ -1,8 +1,10 @@
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.doctors.models import DoctorProfile, Specialty
-from app.doctors.schemas import DoctorProfilePut
+from app.doctors.models import DoctorProfile, DoctorWorkingDay, Specialty
+from app.doctors.schemas import DoctorProfilePut, WorkingDayPut
 
 
 def list_specialties(session: Session) -> list[Specialty]:
@@ -75,3 +77,48 @@ def put_doctor_profile(
     session.commit()
     session.refresh(profile)
     return profile
+
+
+def put_working_day(
+    session: Session,
+    doctor: DoctorProfile,
+    work_date: date,
+    data: WorkingDayPut,
+) -> DoctorWorkingDay:
+    statement = select(DoctorWorkingDay).where(
+        DoctorWorkingDay.doctor_id == doctor.id,
+        DoctorWorkingDay.work_date == work_date,
+    )
+    working_day = session.scalar(statement)
+    if working_day is None:
+        working_day = DoctorWorkingDay(
+            doctor_id=doctor.id,
+            work_date=work_date,
+            start_time=data.start_time,
+            end_time=data.end_time,
+        )
+        session.add(working_day)
+    else:
+        working_day.start_time = data.start_time
+        working_day.end_time = data.end_time
+
+    session.commit()
+    session.refresh(working_day)
+    return working_day
+
+
+def list_working_days(
+    session: Session,
+    doctor: DoctorProfile,
+    date_from: date,
+    date_to: date,
+) -> list[DoctorWorkingDay]:
+    statement = (
+        select(DoctorWorkingDay)
+        .where(
+            DoctorWorkingDay.doctor_id == doctor.id,
+            DoctorWorkingDay.work_date.between(date_from, date_to),
+        )
+        .order_by(DoctorWorkingDay.work_date)
+    )
+    return list(session.scalars(statement))
