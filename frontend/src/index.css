@@ -225,11 +225,12 @@ button {
   transform: translateX(3px);
 }
 
-/* Photo zoom inside a lifted card — secondary motion layer under .card-hover-lift. */
+/* Photo/icon zoom inside a card — secondary motion layer under .card-hover-lift or .card-hover. */
 .img-zoom {
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
-.card-hover-lift:hover .img-zoom {
+.card-hover-lift:hover .img-zoom,
+.card-hover:hover .img-zoom {
   transform: scale(1.06);
 }
 

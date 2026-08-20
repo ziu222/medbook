@@ -116,6 +116,7 @@ export function SpecialtiesSection() {
             }}
           >
             <div
+              className="img-zoom"
               style={{
                 width: '52px',
                 height: '52px',
