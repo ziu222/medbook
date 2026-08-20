@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_database_url
 from app.core.database import Base
+from app.users.models import UserProfile  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_database_url().replace("%", "%%"))
