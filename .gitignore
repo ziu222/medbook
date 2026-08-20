@@ -22,6 +22,16 @@ Thumbs.db
 .tmp/
 .claude/settings.local.json
 CLAUDE.md
+AGENTS.md
 
 # misc
 *.log
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfvars
+
+__pycache__/
+*.py[cod]
+.venv/
