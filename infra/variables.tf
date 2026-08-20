@@ -13,11 +13,15 @@ variable "db_instance_class" {
   type        = string
 }
 
-# Disabled until a custom domain is purchased.
-# variable "domain_name" {
-#   description = "Public hostname for CloudFront"
-#   type        = string
-# }
+variable "domain_name" {
+  description = "Public hostname for CloudFront."
+  type        = string
+}
+
+variable "cloudflare_zone_name" {
+  description = "Cloudflare DNS zone containing domain_name."
+  type        = string
+}
 
 variable "cognito_callback_urls" {
   description = "Allowed Cognito OAuth callback URLs."
