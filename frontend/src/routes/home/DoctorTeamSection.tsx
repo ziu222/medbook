@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ImageSlot } from '../../components/Common/ImageSlot';
-import { doctorTeam } from '../../lib/mockDoctors';
+import { fetchDoctors, type DoctorSummary } from '../../lib/api';
 
 const arrowButtonStyle = {
   position: 'absolute' as const,
@@ -20,10 +20,19 @@ const arrowButtonStyle = {
 
 export function DoctorTeamSection() {
   const stripRef = useRef<HTMLDivElement>(null);
+  const [doctors, setDoctors] = useState<DoctorSummary[]>([]);
+
+  useEffect(() => {
+    fetchDoctors()
+      .then(setDoctors)
+      .catch(() => setDoctors([]));
+  }, []);
 
   const scrollBy = (delta: number) => {
     stripRef.current?.scrollBy({ left: delta, behavior: 'smooth' });
   };
+
+  if (doctors.length === 0) return null;
 
   return (
     <section style={{ padding: '52px 0 8px' }}>
@@ -33,12 +42,12 @@ export function DoctorTeamSection() {
       </div>
 
       <div style={{ position: 'relative' }}>
-        <div className="btn-hover" style={{ ...arrowButtonStyle, left: 0 }} onClick={() => scrollBy(-340)}>
+        <div className="btn-hover carousel-arrow prev" style={{ ...arrowButtonStyle, left: 0 }} onClick={() => scrollBy(-340)}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="m15 6-6 6 6 6" />
           </svg>
         </div>
-        <div className="btn-hover" style={{ ...arrowButtonStyle, right: 0 }} onClick={() => scrollBy(340)}>
+        <div className="btn-hover carousel-arrow next" style={{ ...arrowButtonStyle, right: 0 }} onClick={() => scrollBy(340)}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="m9 6 6 6-6 6" />
           </svg>
@@ -55,17 +64,17 @@ export function DoctorTeamSection() {
             scrollbarWidth: 'none',
           }}
         >
-          {doctorTeam.map((doctor) => (
-            <div key={doctor.id} style={{ flex: '0 0 160px', scrollSnapAlign: 'start', cursor: 'pointer' }}>
+          {doctors.map((doctor) => (
+            <div key={doctor.id} className="fade-up" style={{ flex: '0 0 160px', scrollSnapAlign: 'start', cursor: 'pointer' }}>
               <div
                 className="card-hover-lift"
                 style={{ aspectRatio: '3 / 4', borderRadius: '18px', overflow: 'hidden', background: 'var(--tint)', boxShadow: 'var(--sh-sm)' }}
               >
-                <ImageSlot placeholder={doctor.name} shape="rect" fit="cover" />
+                <ImageSlot className="img-zoom" src={doctor.avatar_url ?? undefined} placeholder={doctor.display_name} shape="rect" fit="cover" />
               </div>
               <div style={{ textAlign: 'center', marginTop: '13px' }}>
-                <div style={{ fontWeight: 800, fontSize: '15.5px', letterSpacing: '-.2px' }}>{doctor.name}</div>
-                <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '3px' }}>{doctor.specialty}</div>
+                <div style={{ fontWeight: 800, fontSize: '15.5px', letterSpacing: '-.2px' }}>{doctor.display_name}</div>
+                <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '3px' }}>{doctor.specialty.name}</div>
               </div>
             </div>
           ))}
