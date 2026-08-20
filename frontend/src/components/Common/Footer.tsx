@@ -104,7 +104,7 @@ export function Footer() {
                 style={{
                   padding: '12px 24px',
                   borderRadius: '11px',
-                  background: 'var(--coral)',
+                  background: 'var(--brand-grad)',
                   color: '#fff',
                   fontWeight: 700,
                   fontSize: '14.5px',

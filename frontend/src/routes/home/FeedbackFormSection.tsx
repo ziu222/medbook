@@ -40,7 +40,7 @@ export function FeedbackFormSection() {
               <span
                 key={mood.id}
                 onClick={() => setMoodId(mood.id)}
-                className="link-hover"
+                className={isActive ? 'mood-pill active' : 'mood-pill'}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -95,7 +95,7 @@ export function FeedbackFormSection() {
             style={{
               padding: '13px 30px',
               borderRadius: '12px',
-              background: 'var(--coral)',
+              background: 'var(--brand-grad)',
               color: '#fff',
               fontWeight: 700,
               fontSize: '15px',

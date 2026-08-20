@@ -30,10 +30,10 @@ export function InfrastructureSection() {
                 width: '72px',
                 height: '72px',
                 borderRadius: '50%',
-                background: 'var(--coral)',
+                background: 'var(--brand-grad)',
                 display: 'grid',
                 placeItems: 'center',
-                boxShadow: '0 8px 26px rgba(242,106,79,.5)',
+                boxShadow: '0 8px 26px rgba(18,148,108,.5)',
               }}
             >
               <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff">
@@ -50,6 +50,7 @@ export function InfrastructureSection() {
             <span
               key={tab.id}
               onClick={() => setActiveId(tab.id)}
+              className={tab.id === activeId ? 'tab-slide active' : 'tab-slide'}
               style={{
                 padding: '12px 2px',
                 fontWeight: 700,
@@ -57,7 +58,6 @@ export function InfrastructureSection() {
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 color: tab.id === activeId ? 'var(--brand)' : 'var(--muted)',
-                borderBottom: tab.id === activeId ? '2.5px solid var(--brand)' : '2.5px solid transparent',
               }}
             >
               {tab.label}
@@ -74,7 +74,7 @@ export function InfrastructureSection() {
           ))}
         </div>
         <div
-          className="btn-hover"
+          className="btn-hover cta-arrow-slide"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -82,7 +82,7 @@ export function InfrastructureSection() {
             marginTop: '24px',
             padding: '13px 24px',
             borderRadius: '12px',
-            background: 'var(--coral)',
+            background: 'var(--brand-grad)',
             color: '#fff',
             fontWeight: 700,
             fontSize: '15px',

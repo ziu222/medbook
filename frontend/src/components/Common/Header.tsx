@@ -63,7 +63,11 @@ export function Header({ active = 'home' }: HeaderProps) {
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
           {NAV_ITEMS.map((item) => (
-            <span key={item.key} style={navItemStyle(item.key === active)}>
+            <span
+              key={item.key}
+              className={item.key === active ? undefined : 'nav-hover-slide'}
+              style={navItemStyle(item.key === active)}
+            >
               {item.label}
             </span>
           ))}
