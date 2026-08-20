@@ -1,0 +1,24 @@
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from fastapi import FastAPI
+from mangum import Mangum
+
+from app.health.router import router as health_router
+
+app = FastAPI(title="MedBook API")
+app.include_router(health_router)
+
+asgi_handler = Mangum(app, lifespan="off")
+
+
+def handler(event, context):
+    if event == {"operation": "alembic-upgrade"}:
+        root = Path(__file__).resolve().parents[1]
+        config = Config(root / "alembic.ini")
+        config.set_main_option("script_location", str(root / "migrations"))
+        command.upgrade(config, "head")
+        return {"statusCode": 200, "body": "Migration completed"}
+
+    return asgi_handler(event, context)
