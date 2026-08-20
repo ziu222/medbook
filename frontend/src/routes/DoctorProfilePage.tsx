@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
+import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
@@ -106,7 +107,9 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
     return (
       <div style={{ minHeight: '100vh' }}>
         <Header active="find" authed={authed} onNavigate={onNavigate} />
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 32px', textAlign: 'center', color: 'var(--muted)' }}>Đang tải...</div>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '100px 32px', display: 'flex', justifyContent: 'center' }}>
+          <LoadingSpinner label="Đang tải hồ sơ bác sĩ..." />
+        </div>
       </div>
     );
   }

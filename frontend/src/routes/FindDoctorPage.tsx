@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
+import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { fetchDoctors, fetchSpecialties, type DoctorSummary, type Specialty } from '../lib/api';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
@@ -114,6 +115,7 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
   const [minRating, setMinRating] = useState(0);
   const [sortByRating, setSortByRating] = useState(false);
   const [doctors, setDoctors] = useState<DoctorSummary[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
 
   useEffect(() => {
     fetchSpecialties()
@@ -122,9 +124,11 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
   }, []);
 
   useEffect(() => {
+    setLoadingDoctors(true);
     fetchDoctors({ limit: 50, specialtyId: selectedSpecialtyId ?? undefined })
       .then(setDoctors)
-      .catch(() => setDoctors([]));
+      .catch(() => setDoctors([]))
+      .finally(() => setLoadingDoctors(false));
   }, [selectedSpecialtyId]);
 
   const results = doctors
@@ -267,7 +271,11 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
                 </div>
               </div>
 
-              {results.length === 0 ? (
+              {loadingDoctors ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                  <LoadingSpinner />
+                </div>
+              ) : results.length === 0 ? (
                 <div className="fade-up" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>
                   Không tìm thấy bác sĩ phù hợp với bộ lọc.
                 </div>
