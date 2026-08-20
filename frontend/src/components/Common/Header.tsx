@@ -5,6 +5,8 @@ export type NavKey = 'home' | 'find' | 'specialties' | 'ai';
 interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
+  onLogin?: () => void;
+  onRegister?: () => void;
 }
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
@@ -34,7 +36,7 @@ const navItemStyle = (isActive: boolean): CSSProperties =>
         color: 'var(--ink2)',
       };
 
-export function Header({ active = 'home' }: HeaderProps) {
+export function Header({ active = 'home', onLogin, onRegister }: HeaderProps) {
   return (
     <header
       style={{
@@ -75,6 +77,7 @@ export function Header({ active = 'home' }: HeaderProps) {
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span
+            onClick={onLogin}
             className="link-hover"
             style={{
               padding: '11px 20px',
@@ -89,6 +92,7 @@ export function Header({ active = 'home' }: HeaderProps) {
             Đăng nhập
           </span>
           <span
+            onClick={onRegister}
             className="btn-hover"
             style={{
               padding: '12px 22px',
