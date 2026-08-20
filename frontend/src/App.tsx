@@ -1,20 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HomePage } from './routes/HomePage';
-import { LoginPage } from './routes/LoginPage';
-import { RegisterPage } from './routes/RegisterPage';
-
-type Screen = 'home' | 'login' | 'register';
+import { handleAuthCallback, isAuthenticated } from './lib/auth';
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('home');
+  const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
+  const [authed, setAuthed] = useState(isAuthenticated());
 
-  if (screen === 'login') {
-    return <LoginPage onGoHome={() => setScreen('home')} onGoRegister={() => setScreen('register')} />;
-  }
-  if (screen === 'register') {
-    return <RegisterPage onGoHome={() => setScreen('home')} onGoLogin={() => setScreen('login')} />;
-  }
-  return <HomePage onGoLogin={() => setScreen('login')} onGoRegister={() => setScreen('register')} />;
+  useEffect(() => {
+    if (!onCallback) return;
+    handleAuthCallback()
+      .catch((err) => console.error('Đăng nhập thất bại:', err))
+      .finally(() => {
+        setAuthed(isAuthenticated());
+        window.history.replaceState({}, '', '/');
+        setOnCallback(false);
+      });
+  }, [onCallback]);
+
+  if (onCallback) return null;
+  return <HomePage authed={authed} />;
 }
 
 export default App

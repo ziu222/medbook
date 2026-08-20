@@ -1,3 +1,5 @@
+import { getAccessToken } from './auth';
+
 export interface Specialty {
   id: number;
   name: string;
@@ -16,7 +18,8 @@ export interface DoctorSummary {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const token = getAccessToken();
+  const res = await fetch(path, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   if (!res.ok) throw new Error(`${path} -> ${res.status}`);
   return res.json();
 }

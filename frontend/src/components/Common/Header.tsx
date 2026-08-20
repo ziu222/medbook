@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react';
+import { logout, redirectToLogin, redirectToSignup } from '../../lib/auth';
 
 export type NavKey = 'home' | 'find' | 'specialties' | 'ai';
 
 interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
-  onLogin?: () => void;
-  onRegister?: () => void;
+  authed?: boolean;
 }
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
@@ -36,7 +36,7 @@ const navItemStyle = (isActive: boolean): CSSProperties =>
         color: 'var(--ink2)',
       };
 
-export function Header({ active = 'home', onLogin, onRegister }: HeaderProps) {
+export function Header({ active = 'home', authed = false }: HeaderProps) {
   return (
     <header
       style={{
@@ -76,37 +76,57 @@ export function Header({ active = 'home', onLogin, onRegister }: HeaderProps) {
         </nav>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span
-            onClick={onLogin}
-            className="link-hover"
-            style={{
-              padding: '11px 20px',
-              borderRadius: '12px',
-              border: '1.5px solid var(--line)',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: 'pointer',
-              color: 'var(--ink)',
-            }}
-          >
-            Đăng nhập
-          </span>
-          <span
-            onClick={onRegister}
-            className="btn-hover"
-            style={{
-              padding: '12px 22px',
-              borderRadius: '12px',
-              background: 'var(--brand-grad)',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: 'pointer',
-              boxShadow: 'var(--sh-sm)',
-            }}
-          >
-            Đăng ký
-          </span>
+          {authed ? (
+            <span
+              onClick={logout}
+              className="link-hover"
+              style={{
+                padding: '11px 20px',
+                borderRadius: '12px',
+                border: '1.5px solid var(--line)',
+                fontWeight: 700,
+                fontSize: '15px',
+                cursor: 'pointer',
+                color: 'var(--ink)',
+              }}
+            >
+              Đăng xuất
+            </span>
+          ) : (
+            <>
+              <span
+                onClick={() => redirectToLogin()}
+                className="link-hover"
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  border: '1.5px solid var(--line)',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  color: 'var(--ink)',
+                }}
+              >
+                Đăng nhập
+              </span>
+              <span
+                onClick={() => redirectToSignup()}
+                className="btn-hover"
+                style={{
+                  padding: '12px 22px',
+                  borderRadius: '12px',
+                  background: 'var(--brand-grad)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--sh-sm)',
+                }}
+              >
+                Đăng ký
+              </span>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -9,14 +9,13 @@ import { FeedbackFormSection } from './home/FeedbackFormSection';
 import { StepsSection } from './home/StepsSection';
 
 interface HomePageProps {
-  onGoLogin: () => void;
-  onGoRegister: () => void;
+  authed: boolean;
 }
 
-export function HomePage({ onGoLogin, onGoRegister }: HomePageProps) {
+export function HomePage({ authed }: HomePageProps) {
   return (
     <div style={{ minHeight: '100vh' }}>
-      <Header active="home" onLogin={onGoLogin} onRegister={onGoRegister} />
+      <Header active="home" authed={authed} />
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 32px' }}>
         <HeroSection />
         <SpecialtiesSection />
