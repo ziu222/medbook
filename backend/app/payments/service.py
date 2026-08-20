@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
 from app.core.config import get_vnpay_credentials
-from app.doctors.models import DoctorProfile
 from app.payments.models import Payment, Refund
 
 APP_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
 PAYMENT_TTL = timedelta(minutes=15)
+# Flat platform fee to hold/confirm a slot — unrelated to the doctor's own
+# consultation fee, which is paid at the clinic and never flows through VNPAY.
+BOOKING_FEE_VND = 150_000
 
 
 def _sign_query(values: dict[str, str], secret: str) -> str:
@@ -61,12 +63,6 @@ def create_payment(
     if existing is not None:
         return existing
 
-    doctor = session.get(DoctorProfile, appointment.doctor_id)
-    if doctor is None or doctor.consultation_fee_vnd is None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Doctor has not configured a consultation fee"
-        )
-
     credentials = get_vnpay_credentials()
     now = datetime.now(APP_TIMEZONE)
     expires_at = now + PAYMENT_TTL
@@ -75,7 +71,7 @@ def create_payment(
         "vnp_Version": "2.1.0",
         "vnp_Command": "pay",
         "vnp_TmnCode": credentials["tmn_code"],
-        "vnp_Amount": str(doctor.consultation_fee_vnd * 100),
+        "vnp_Amount": str(BOOKING_FEE_VND * 100),
         "vnp_CreateDate": now.strftime("%Y%m%d%H%M%S"),
         "vnp_CurrCode": "VND",
         "vnp_IpAddr": client_ip[:45],
@@ -90,7 +86,7 @@ def create_payment(
     payment = Payment(
         appointment_id=appointment.id,
         provider="vnpay",
-        amount_vnd=doctor.consultation_fee_vnd,
+        amount_vnd=BOOKING_FEE_VND,
         txn_ref=txn_ref,
         status="pending",
         checkout_url=f"{credentials['pay_url']}?{urlencode(sorted(values.items()))}",

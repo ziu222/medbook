@@ -115,7 +115,7 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
         appointment_id = booked.json()["id"]
         started = client.post(f"/api/appointments/{appointment_id}/payment")
         assert started.status_code == 201
-        assert started.json()["amount_vnd"] == 200_000
+        assert started.json()["amount_vnd"] == 150_000
 
         params = {
             key: values[0]
@@ -128,7 +128,7 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
         ipn = {
             "vnp_TmnCode": "TESTCODE",
             "vnp_TxnRef": params["vnp_TxnRef"],
-            "vnp_Amount": "20000000",
+            "vnp_Amount": "15000000",
             "vnp_ResponseCode": "00",
             "vnp_TransactionStatus": "00",
             "vnp_TransactionNo": "123456",
@@ -156,7 +156,7 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
         assert cancelled.json()["refund_status"] == "pending"
         with Session(engine) as session:
             assert session.scalar(select(Payment)).status == "paid"
-            assert session.scalar(select(Refund)).amount_vnd == 200_000
+            assert session.scalar(select(Refund)).amount_vnd == 150_000
             event_types = set(session.scalars(select(NotificationOutbox.event_type)))
             assert event_types == {"appointment_cancelled", "payment_refund_requested"}
 
@@ -189,7 +189,7 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
         late_ipn = {
             "vnp_TmnCode": "TESTCODE",
             "vnp_TxnRef": late_params["vnp_TxnRef"],
-            "vnp_Amount": "20000000",
+            "vnp_Amount": "15000000",
             "vnp_ResponseCode": "00",
             "vnp_TransactionStatus": "00",
             "vnp_TransactionNo": "654321",
