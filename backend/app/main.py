@@ -9,6 +9,7 @@ from app.appointments.router import router as appointments_router
 from app.cancellations.router import router as cancellations_router
 from app.doctors.router import router as doctors_router
 from app.health.router import router as health_router
+from app.payments.router import router as payments_router
 from app.users.router import router as users_router
 
 app = FastAPI(title="MedBook API")
@@ -16,6 +17,7 @@ app.include_router(appointments_router)
 app.include_router(cancellations_router)
 app.include_router(doctors_router)
 app.include_router(health_router)
+app.include_router(payments_router)
 app.include_router(users_router)
 
 asgi_handler = Mangum(app, lifespan="off")
