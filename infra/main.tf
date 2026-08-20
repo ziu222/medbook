@@ -71,6 +71,28 @@ module "acm" {
   tags = local.common_tags
 }
 
+module "notifications" {
+  source = "./modules/notifications"
+
+  providers = {
+    aws        = aws
+    cloudflare = cloudflare
+  }
+
+  name                  = local.name
+  image_uri             = "640012953073.dkr.ecr.ap-southeast-1.amazonaws.com/medbook-backend:${local.image_sha}"
+  cognito_user_pool_id  = module.cognito.user_pool_id
+  cognito_user_pool_arn = module.cognito.user_pool_arn
+  domain_name           = var.domain_name
+  cloudflare_zone_name  = var.cloudflare_zone_name
+  vnpay_secret_arn      = aws_secretsmanager_secret.vnpay.arn
+  vnpay_pay_url         = local.vnpay_pay_url
+  vnpay_return_url      = "https://${var.domain_name}/payment/result"
+  vnpay_api_url         = local.vnpay_api_url
+  api_function_name     = "${local.name}-api:live"
+  tags                  = local.common_tags
+}
+
 module "api" {
   source = "./modules/api"
 
@@ -88,6 +110,8 @@ module "api" {
   cognito_user_pool_id       = module.cognito.user_pool_id
   cognito_user_pool_endpoint = module.cognito.user_pool_endpoint
   cognito_app_client_id      = module.cognito.app_client_id
+  notification_queue_arn     = module.notifications.queue_arn
+  notification_queue_url     = module.notifications.queue_url
   vnpay_secret_arn           = aws_secretsmanager_secret.vnpay.arn
   vnpay_pay_url              = local.vnpay_pay_url
   vnpay_return_url           = "https://${var.domain_name}/payment/result"
