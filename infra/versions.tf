@@ -15,10 +15,10 @@ terraform {
       version = "~> 6.0"
     }
 
-    # cloudflare = {
-    #   source  = "cloudflare/cloudflare"
-    #   version = "~> 5.0"
-    # }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -38,4 +38,4 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# provider "cloudflare" {}
+provider "cloudflare" {}

@@ -187,10 +187,10 @@ resource "aws_cloudfront_function" "spa_rewrite" {
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   default_root_object = "index.html"
-  # aliases           = [var.domain_name]
-  price_class = "PriceClass_100"
-  comment     = "${var.name} frontend"
-  web_acl_id  = aws_wafv2_web_acl.cloudfront.arn
+  aliases             = [var.domain_name]
+  price_class         = "PriceClass_100"
+  comment             = "${var.name} frontend"
+  web_acl_id          = aws_wafv2_web_acl.cloudfront.arn
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -244,10 +244,9 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
-    # acm_certificate_arn      = var.certificate_arn
-    # minimum_protocol_version = "TLSv1.2_2021"
-    # ssl_support_method       = "sni-only"
+    acm_certificate_arn      = var.certificate_arn
+    minimum_protocol_version = "TLSv1.2_2021"
+    ssl_support_method       = "sni-only"
   }
 
   tags = merge(local.common_tags, {

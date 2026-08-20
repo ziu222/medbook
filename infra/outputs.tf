@@ -18,11 +18,10 @@ output "cloudfront_web_acl_arn" {
   value       = module.frontend.web_acl_arn
 }
 
-# Disabled until a custom domain is purchased.
-# output "cloudfront_certificate_arn" {
-#   description = "Validated us-east-1 ACM certificate."
-#   value       = module.acm.certificate_arn
-# }
+output "cloudfront_certificate_arn" {
+  description = "Validated us-east-1 ACM certificate."
+  value       = module.acm.certificate_arn
+}
 
 output "api_endpoint" {
   description = "Direct API Gateway endpoint."

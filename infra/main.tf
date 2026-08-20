@@ -1,5 +1,5 @@
 locals {
-  name = var.project
+  name      = var.project
   vpc_cidr  = "10.0.0.0/16"
   image_sha = "replace-with-git-sha"
 
@@ -41,25 +41,33 @@ module "rds" {
 module "cognito" {
   source = "./modules/cognito"
 
-  aws_region    = var.aws_region
-  name          = local.name
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
+  aws_region = var.aws_region
+  name       = local.name
+  callback_urls = concat(
+    var.cognito_callback_urls,
+    ["https://${var.domain_name}/auth/callback"],
+  )
+  logout_urls = concat(
+    var.cognito_logout_urls,
+    ["https://${var.domain_name}/"],
+  )
 
   tags = local.common_tags
 }
 
-# module "acm" {
-#   source = "./modules/acm"
-#
-#   providers = {
-#     aws        = aws.us_east_1
-#     cloudflare = cloudflare
-#   }
-#
-#   domain_name          = var.domain_name
-#   cloudflare_zone_name = var.domain_name
-# }
+module "acm" {
+  source = "./modules/acm"
+
+  providers = {
+    aws        = aws.us_east_1
+    cloudflare = cloudflare
+  }
+
+  domain_name          = var.domain_name
+  cloudflare_zone_name = var.cloudflare_zone_name
+
+  tags = local.common_tags
+}
 
 module "api" {
   source = "./modules/api"
@@ -90,24 +98,23 @@ module "frontend" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  name         = local.name
-  api_endpoint = module.api.api_endpoint
-  # domain_name             = var.domain_name
-  # certificate_arn         = module.acm.certificate_arn
+  name                    = local.name
+  api_endpoint            = module.api.api_endpoint
+  domain_name             = var.domain_name
+  certificate_arn         = module.acm.certificate_arn
   waf_rate_limit_per_5min = 2000
 
   tags = local.common_tags
 }
 
-# Disabled until a custom domain is purchased.
-# resource "cloudflare_dns_record" "app" {
-#   zone_id = module.acm.cloudflare_zone_id
-#   name    = var.domain_name
-#   type    = "CNAME"
-#   content = module.frontend.distribution_domain_name
-#   ttl     = 60
-#   proxied = false
-# }
+resource "cloudflare_dns_record" "app" {
+  zone_id = module.acm.cloudflare_zone_id
+  name    = var.domain_name
+  type    = "CNAME"
+  content = module.frontend.distribution_domain_name
+  ttl     = 60
+  proxied = false
+}
 
 resource "aws_budgets_budget" "monthly" {
   name         = "${local.name}-monthly"
