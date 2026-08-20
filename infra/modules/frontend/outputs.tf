@@ -20,6 +20,5 @@ output "web_acl_arn" {
 
 output "url" {
   description = "CloudFront application URL."
-  value       = "https://${aws_cloudfront_distribution.this.domain_name}"
-  # value     = "https://${var.app_domain_name}"
+  value       = "https://${var.domain_name}"
 }
