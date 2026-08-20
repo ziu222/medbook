@@ -5,10 +5,12 @@ from alembic.config import Config
 from fastapi import FastAPI
 from mangum import Mangum
 
+from app.doctors.router import router as doctors_router
 from app.health.router import router as health_router
 from app.users.router import router as users_router
 
 app = FastAPI(title="MedBook API")
+app.include_router(doctors_router)
 app.include_router(health_router)
 app.include_router(users_router)
 
