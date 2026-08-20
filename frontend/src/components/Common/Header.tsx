@@ -7,6 +7,8 @@ interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
   authed?: boolean;
+  /** Only 'home' and 'find' route anywhere today — 'specialties' also lands on Find, 'ai' is a no-op. */
+  onNavigate?: (key: NavKey) => void;
 }
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
@@ -36,7 +38,7 @@ const navItemStyle = (isActive: boolean): CSSProperties =>
         color: 'var(--ink2)',
       };
 
-export function Header({ active = 'home', authed = false }: HeaderProps) {
+export function Header({ active = 'home', authed = false, onNavigate }: HeaderProps) {
   return (
     <header
       style={{
@@ -69,6 +71,7 @@ export function Header({ active = 'home', authed = false }: HeaderProps) {
               key={item.key}
               className={item.key === active ? undefined : 'nav-hover-slide'}
               style={navItemStyle(item.key === active)}
+              onClick={() => onNavigate?.(item.key === 'specialties' ? 'find' : item.key)}
             >
               {item.label}
             </span>

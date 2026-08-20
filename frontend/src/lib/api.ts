@@ -25,4 +25,9 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const fetchSpecialties = () => get<Specialty[]>('/api/specialties');
-export const fetchDoctors = (limit = 12) => get<DoctorSummary[]>(`/api/doctors?limit=${limit}`);
+
+export function fetchDoctors(opts: { limit?: number; specialtyId?: number } = {}) {
+  const params = new URLSearchParams({ limit: String(opts.limit ?? 12) });
+  if (opts.specialtyId) params.set('specialty_id', String(opts.specialtyId));
+  return get<DoctorSummary[]>(`/api/doctors?${params}`);
+}
