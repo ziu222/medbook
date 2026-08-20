@@ -1,7 +1,9 @@
 locals {
-  name      = var.project
-  vpc_cidr  = "10.0.0.0/16"
-  image_sha = "replace-with-git-sha"
+  name          = var.project
+  vpc_cidr      = "10.0.0.0/16"
+  image_sha     = "test-10"
+  vnpay_pay_url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+  vnpay_api_url = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
 
   common_tags = {
     Project   = var.project
@@ -75,7 +77,7 @@ module "api" {
   name                       = local.name
   image_uri                  = "640012953073.dkr.ecr.ap-southeast-1.amazonaws.com/medbook-backend:${local.image_sha}"
   memory_size                = 1024
-  reserved_concurrency       = 10
+  reserved_concurrency       = -1
   private_subnet_ids         = module.network.private_subnet_ids
   lambda_security_group_id   = module.network.lambda_security_group_id
   database_host              = module.rds.host
@@ -86,6 +88,9 @@ module "api" {
   cognito_user_pool_id       = module.cognito.user_pool_id
   cognito_user_pool_endpoint = module.cognito.user_pool_endpoint
   cognito_app_client_id      = module.cognito.app_client_id
+  vnpay_secret_arn           = aws_secretsmanager_secret.vnpay.arn
+  vnpay_pay_url              = local.vnpay_pay_url
+  vnpay_return_url           = "https://${var.domain_name}/payment/result"
 
   depends_on = [module.network]
 }
