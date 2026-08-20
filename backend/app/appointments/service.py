@@ -15,6 +15,7 @@ from app.appointments.schemas import (
     AvailabilitySlot,
     RelativeAppointmentCreate,
 )
+from app.cancellations.service import assign_active_policy
 from app.doctors.models import DoctorProfile, DoctorWorkingDay
 from app.users.models import UserProfile
 
@@ -166,6 +167,7 @@ def create_appointment(
     )
     session.add(appointment)
     try:
+        assign_active_policy(session, appointment)
         session.commit()
     except IntegrityError as error:
         session.rollback()
