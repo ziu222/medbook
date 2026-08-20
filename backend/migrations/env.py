@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_database_url
 from app.core.database import Base
+from app.doctors.models import DoctorProfile, Specialty  # noqa: F401
 from app.users.models import UserProfile  # noqa: F401
 
 config = context.config
