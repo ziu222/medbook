@@ -59,6 +59,19 @@ resource "aws_iam_role_policy" "lambda_database_secret" {
   policy = data.aws_iam_policy_document.lambda_database_secret.json
 }
 
+data "aws_iam_policy_document" "lambda_notification_queue" {
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [var.notification_queue_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_notification_queue" {
+  name   = "send-notifications"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_notification_queue.json
+}
+
 resource "aws_cloudwatch_log_group" "api_lambda" {
   name              = "/aws/lambda/${var.name}-api"
   retention_in_days = 30
@@ -87,17 +100,18 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      APP_ENV               = "production"
-      DB_HOST               = var.database_host
-      DB_PORT               = tostring(var.database_port)
-      DB_NAME               = var.database_name
-      DB_USER               = var.database_username
-      DB_SECRET_ARN         = var.database_secret_arn
-      COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
-      COGNITO_APP_CLIENT_ID = var.cognito_app_client_id
-      VNPAY_SECRET_ARN      = var.vnpay_secret_arn
-      VNPAY_PAY_URL         = var.vnpay_pay_url
-      VNPAY_RETURN_URL      = var.vnpay_return_url
+      APP_ENV                = "production"
+      DB_HOST                = var.database_host
+      DB_PORT                = tostring(var.database_port)
+      DB_NAME                = var.database_name
+      DB_USER                = var.database_username
+      DB_SECRET_ARN          = var.database_secret_arn
+      COGNITO_USER_POOL_ID   = var.cognito_user_pool_id
+      COGNITO_APP_CLIENT_ID  = var.cognito_app_client_id
+      NOTIFICATION_QUEUE_URL = var.notification_queue_url
+      VNPAY_SECRET_ARN       = var.vnpay_secret_arn
+      VNPAY_PAY_URL          = var.vnpay_pay_url
+      VNPAY_RETURN_URL       = var.vnpay_return_url
     }
   }
 
@@ -106,6 +120,7 @@ resource "aws_lambda_function" "api" {
     aws_iam_role_policy_attachment.lambda_basic,
     aws_iam_role_policy_attachment.lambda_vpc,
     aws_iam_role_policy.lambda_database_secret,
+    aws_iam_role_policy.lambda_notification_queue,
   ]
 
   tags = merge(local.common_tags, {
