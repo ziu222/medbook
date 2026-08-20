@@ -48,3 +48,22 @@ class CancellationPolicyRead(BaseModel):
     created_by_sub: str
     effective_from: datetime
     refund_tiers: list[RefundTierRead]
+
+
+class CancellationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class CancellationRead(BaseModel):
+    appointment_id: int
+    status: Literal["cancelled"]
+    cancelled_by: Literal["patient", "doctor"]
+    reason: str
+    policy_id: int
+    minutes_before: int
+    refund_percentage: int
+    refund_status: Literal["not_applicable", "pending", "succeeded", "failed"]
+    notification_status: Literal["pending", "queued"]
+    cancelled_at: datetime

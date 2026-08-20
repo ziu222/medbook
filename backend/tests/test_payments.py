@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.appointments.models import Appointment
-from app.cancellations.models import CancellationPolicy, RefundTier
+from app.cancellations.models import CancellationPolicy, NotificationOutbox, RefundTier
 from app.core.auth import CurrentUser, get_current_user
 from app.core.database import Base, get_session
 from app.doctors.models import DoctorProfile, DoctorWorkingDay, Specialty
 from app.main import app
-from app.payments.models import Payment
+from app.payments.models import Payment, Refund
 from app.users.models import UserProfile
 
 SECRET = "test-secret"
@@ -149,10 +149,67 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
             client.get("/api/payments/vnpay/ipn", params=ipn).json()["RspCode"] == "02"
         )
 
+        cancelled = client.post(
+            f"/api/appointments/{appointment_id}/cancel",
+            json={"reason": "Thay đổi kế hoạch"},
+        )
+        assert cancelled.json()["refund_status"] == "pending"
         with Session(engine) as session:
             assert session.scalar(select(Payment)).status == "paid"
-            assert session.get(Appointment, appointment_id).status == "confirmed"
+            assert session.scalar(select(Refund)).amount_vnd == 200_000
+            event_types = set(session.scalars(select(NotificationOutbox.event_type)))
+            assert event_types == {"appointment_cancelled", "payment_refund_requested"}
 
+        late_booking = client.post(
+            "/api/appointments",
+            json={
+                "doctor_id": doctor_id,
+                "appointment_date": work_date.isoformat(),
+                "start_time": "08:30",
+                "booking_for": "self",
+                "symptoms": "Đau đầu",
+            },
+        ).json()
+        late_payment = client.post(
+            f"/api/appointments/{late_booking['id']}/payment"
+        ).json()
+        late_params = {
+            key: values[0]
+            for key, values in parse_qs(
+                urlparse(late_payment["checkout_url"]).query
+            ).items()
+        }
+        late_params.pop("vnp_SecureHash")
+        cancelled_before_ipn = client.post(
+            f"/api/appointments/{late_booking['id']}/cancel",
+            json={"reason": "Hủy khi đang thanh toán"},
+        )
+        assert cancelled_before_ipn.json()["refund_status"] == "not_applicable"
+
+        late_ipn = {
+            "vnp_TmnCode": "TESTCODE",
+            "vnp_TxnRef": late_params["vnp_TxnRef"],
+            "vnp_Amount": "20000000",
+            "vnp_ResponseCode": "00",
+            "vnp_TransactionStatus": "00",
+            "vnp_TransactionNo": "654321",
+            "vnp_PayDate": "20260819120500",
+        }
+        late_ipn["vnp_SecureHash"] = _sign(late_ipn)
+        assert (
+            client.get("/api/payments/vnpay/ipn", params=late_ipn).json()["RspCode"]
+            == "00"
+        )
+        with Session(engine) as session:
+            assert session.get(Appointment, late_booking["id"]).status == "cancelled"
+            late_payment_row = session.scalar(
+                select(Payment).where(Payment.appointment_id == late_booking["id"])
+            )
+            assert late_payment_row.status == "paid"
+            late_refund = session.scalar(
+                select(Refund).where(Refund.payment_id == late_payment_row.id)
+            )
+            assert late_refund.percentage == 100
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

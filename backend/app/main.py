@@ -31,4 +31,31 @@ def handler(event, context):
         command.upgrade(config, "head")
         return {"statusCode": 200, "body": "Migration completed"}
 
+    if event == {"operation": "dispatch-notifications"}:
+        from sqlalchemy.orm import Session
+
+        from app.cancellations.service import dispatch_notifications
+        from app.core.database import get_engine
+
+        with Session(get_engine()) as session:
+            count = dispatch_notifications(session)
+        return {"statusCode": 200, "body": f"{count} notifications queued"}
+
+    if event.get("operation") == "record-refund-result":
+        from sqlalchemy.orm import Session
+
+        from app.core.database import get_engine
+        from app.payments.service import record_refund_result
+
+        with Session(get_engine()) as session:
+            record_refund_result(session, event)
+        return {"statusCode": 200, "body": "Refund result recorded"}
+
+    if event.get("Records") and all(
+        record.get("eventSource") == "aws:sqs" for record in event["Records"]
+    ):
+        from app.cancellations.worker import handle_sqs
+
+        return handle_sqs(event)
+
     return asgi_handler(event, context)
