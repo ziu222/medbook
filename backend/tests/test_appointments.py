@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.appointments.models import PatientDependent
+from app.cancellations.models import CancellationPolicy, RefundTier
 from app.core.auth import CurrentUser, get_current_user
 from app.core.database import Base, get_session
 from app.doctors.models import DoctorProfile, DoctorWorkingDay, Specialty
@@ -33,6 +34,25 @@ def test_booking_self_relative_availability_and_role_views() -> None:
         session.add_all(
             [
                 doctor,
+                CancellationPolicy(
+                    patient_cancel_cutoff_minutes=1440,
+                    provider_cancel_cutoff_minutes=None,
+                    is_active=True,
+                    created_by_sub="system",
+                    effective_from=datetime.now(UTC),
+                    refund_tiers=[
+                        RefundTier(
+                            actor_role="patient",
+                            min_minutes_before=1440,
+                            refund_percentage=100,
+                        ),
+                        RefundTier(
+                            actor_role="provider",
+                            min_minutes_before=0,
+                            refund_percentage=100,
+                        ),
+                    ],
+                ),
                 UserProfile(
                     cognito_sub="patient-sub",
                     display_name="Nguyễn Văn A",
