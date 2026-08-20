@@ -2,27 +2,16 @@ import { useEffect, useState } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { fetchDoctors, fetchSpecialties, type DoctorSummary, type Specialty } from '../lib/api';
+import { avatarColorFor, initialsFor } from '../lib/avatar';
+import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
 
 interface FindDoctorPageProps {
   authed: boolean;
   onNavigate: (key: NavKey) => void;
+  onSelectDoctor: (id: number) => void;
 }
 
 const RATING_FILTERS = [0, 4.5, 4.0, 3.5];
-const AVATAR_COLORS = ['var(--brand)', 'var(--coral)', 'var(--forest)', 'var(--gold)'];
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function formatVnd(amount: number): string {
-  return `${amount.toLocaleString('vi-VN')}đ`;
-}
-
-// Flat platform fee charged to hold/confirm a slot — separate from and unrelated to the
-// doctor's own consultation fee (paid at the clinic, not through the app).
-const BOOKING_FEE_VND = 150_000;
 
 const starIcon = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--gold)">
@@ -52,7 +41,7 @@ const feeIcon = (
   </svg>
 );
 
-function DoctorCard({ doctor, delayMs }: { doctor: DoctorSummary; delayMs: number }) {
+function DoctorCard({ doctor, delayMs, onSelectDoctor }: { doctor: DoctorSummary; delayMs: number; onSelectDoctor: (id: number) => void }) {
   return (
     <div
       className="card-hover fade-up"
@@ -69,7 +58,7 @@ function DoctorCard({ doctor, delayMs }: { doctor: DoctorSummary; delayMs: numbe
             placeItems: 'center',
             fontWeight: 800,
             fontSize: '18px',
-            background: AVATAR_COLORS[doctor.id % AVATAR_COLORS.length],
+            background: avatarColorFor(doctor.id),
             flexShrink: 0,
           }}
         >
@@ -100,6 +89,7 @@ function DoctorCard({ doctor, delayMs }: { doctor: DoctorSummary; delayMs: numbe
         </div>
       </div>
       <div
+        onClick={() => onSelectDoctor(doctor.id)}
         className="btn-hover"
         style={{
           textAlign: 'center',
@@ -118,7 +108,7 @@ function DoctorCard({ doctor, delayMs }: { doctor: DoctorSummary; delayMs: numbe
   );
 }
 
-export function FindDoctorPage({ authed, onNavigate }: FindDoctorPageProps) {
+export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDoctorPageProps) {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number | null>(null);
   const [minRating, setMinRating] = useState(0);
@@ -284,7 +274,7 @@ export function FindDoctorPage({ authed, onNavigate }: FindDoctorPageProps) {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   {results.map((doctor, i) => (
-                    <DoctorCard key={doctor.id} doctor={doctor} delayMs={Math.min(i * 40, 320)} />
+                    <DoctorCard key={doctor.id} doctor={doctor} delayMs={Math.min(i * 40, 320)} onSelectDoctor={onSelectDoctor} />
                   ))}
                 </div>
               )}
