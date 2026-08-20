@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from datetime import date, time
+
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
 class SpecialtyRead(BaseModel):
@@ -36,3 +38,21 @@ class DoctorProfilePut(BaseModel):
     years_experience: int = Field(default=0, ge=0, le=80)
     consultation_fee_vnd: int | None = Field(default=None, ge=1000, le=100_000_000)
     avatar_url: HttpUrl | None = Field(default=None, max_length=500)
+
+
+class WorkingDayPut(BaseModel):
+    start_time: time
+    end_time: time
+
+    @model_validator(mode="after")
+    def validate_time_order(self):
+        if self.start_time >= self.end_time:
+            raise ValueError("start_time must be before end_time")
+        return self
+
+
+class WorkingDayRead(WorkingDayPut):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    work_date: date

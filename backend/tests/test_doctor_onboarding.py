@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -74,6 +76,34 @@ def test_doctor_can_create_and_read_own_profile() -> None:
         profile = client.get("/api/doctor/me")
         assert profile.status_code == 200
         assert profile.json()["specialty"]["slug"] == "tim-mach"
+
+        work_date = datetime.now(UTC).date() + timedelta(days=1)
+        schedule = client.put(
+            f"/api/doctor/schedules/{work_date.isoformat()}",
+            json={"start_time": "08:00", "end_time": "17:00"},
+        )
+        assert schedule.status_code == 200
+        assert schedule.json()["work_date"] == work_date.isoformat()
+
+        replacement = client.put(
+            f"/api/doctor/schedules/{work_date.isoformat()}",
+            json={"start_time": "09:00", "end_time": "16:00"},
+        )
+        assert replacement.status_code == 200
+
+        schedules = client.get(
+            "/api/doctor/schedules",
+            params={"date_from": work_date, "date_to": work_date},
+        )
+        assert schedules.status_code == 200
+        assert len(schedules.json()) == 1
+        assert schedules.json()[0]["start_time"] == "09:00:00"
+
+        invalid_schedule = client.put(
+            f"/api/doctor/schedules/{work_date.isoformat()}",
+            json={"start_time": "17:00", "end_time": "08:00"},
+        )
+        assert invalid_schedule.status_code == 422
 
         spoof = client.put(
             "/api/doctor/me",
