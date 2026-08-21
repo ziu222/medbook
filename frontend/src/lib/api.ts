@@ -28,7 +28,16 @@ export interface AvailabilitySlot {
 
 export interface AppointmentRead {
   id: number;
+  doctor_id: number;
+  booking_for: string;
+  patient_full_name: string;
+  patient_phone_number: string | null;
+  symptoms: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
   status: string;
+  created_at: string;
 }
 
 export interface PaymentRead {
@@ -87,3 +96,5 @@ export const bookAppointment = (input: BookAppointmentInput) =>
   });
 
 export const startPayment = (appointmentId: number) => post<PaymentRead>(`/api/appointments/${appointmentId}/payment`, {});
+
+export const fetchMyAppointments = () => get<AppointmentRead[]>('/api/appointments/me');
