@@ -1,13 +1,13 @@
 import type { CSSProperties } from 'react';
 import { logout, redirectToLogin, redirectToSignup } from '../../lib/auth';
 
-export type NavKey = 'home' | 'find' | 'specialties' | 'ai';
+export type NavKey = 'home' | 'find' | 'specialties' | 'ai' | 'appointments';
 
 interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
   authed?: boolean;
-  /** Only 'home' and 'find' route anywhere today — 'specialties' also lands on Find, 'ai' is a no-op. */
+  /** 'specialties' also lands on Find, 'ai' is a no-op. 'appointments' only shows once authed. */
   onNavigate?: (key: NavKey) => void;
 }
 
@@ -80,21 +80,30 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {authed ? (
-            <span
-              onClick={logout}
-              className="link-hover"
-              style={{
-                padding: '11px 20px',
-                borderRadius: '12px',
-                border: '1.5px solid var(--line)',
-                fontWeight: 700,
-                fontSize: '15px',
-                cursor: 'pointer',
-                color: 'var(--ink)',
-              }}
-            >
-              Đăng xuất
-            </span>
+            <>
+              <span
+                className={active === 'appointments' ? undefined : 'nav-hover-slide'}
+                style={navItemStyle(active === 'appointments')}
+                onClick={() => onNavigate?.('appointments')}
+              >
+                Lịch hẹn của tôi
+              </span>
+              <span
+                onClick={logout}
+                className="link-hover"
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  border: '1.5px solid var(--line)',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                  color: 'var(--ink)',
+                }}
+              >
+                Đăng xuất
+              </span>
+            </>
           ) : (
             <>
               <span
