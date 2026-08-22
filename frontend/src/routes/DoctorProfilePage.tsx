@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
+import { doctorReviewCount, doctorReviews } from '../lib/mockContent';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
+
+const HOSPITAL_ADDRESS = '786 Nguyễn Kiệm, TP. Hồ Chí Minh';
 
 interface DoctorProfilePageProps {
   doctorId: number;
@@ -54,6 +57,140 @@ const shieldIcon = (
   </svg>
 );
 
+const reviewIcon = (
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2">
+    <circle cx="9" cy="8" r="3" />
+    <path d="M3 20c0-3.3 2.7-6 6-6M15 11a3 3 0 1 0 0-6M21 20c0-2.4-1.7-4.5-4-5.4" />
+  </svg>
+);
+
+const specialtyPath = (
+  <>
+    <circle cx="9" cy="8" r="3" />
+    <path d="M6 21a5 5 0 0 1 10 0M17 10a2 2 0 1 0 0-4" />
+  </>
+);
+
+const experiencePath = (
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5.3l3.3 2" strokeLinecap="round" />
+  </>
+);
+
+const pinPath = (
+  <>
+    <path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11Z" />
+    <circle cx="12" cy="10" r="2.4" />
+  </>
+);
+
+const buildingPath = (
+  <>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <path d="M9 8h.01M15 8h.01M10 21v-3h4v3" />
+  </>
+);
+
+const starPath = <path d="m12 3 2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.9 6.9 18.8 8 13 3.7 9l5.8-.7Z" />;
+
+const TAB_LABELS: { key: Tab; label: string }[] = [
+  { key: 'about', label: 'Giới thiệu' },
+  { key: 'experience', label: 'Kinh nghiệm' },
+  { key: 'reviews', label: 'Đánh giá' },
+];
+
+const tileIcon = (path: ReactNode) => (
+  <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#fff', display: 'grid', placeItems: 'center', marginBottom: '12px' }}>
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2">
+      {path}
+    </svg>
+  </div>
+);
+
+function InfoTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div style={{ background: 'var(--tint2)', borderRadius: '16px', padding: '18px' }}>
+      {tileIcon(icon)}
+      <div style={{ color: 'var(--muted)', fontSize: '13.5px' }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: '15.5px' }}>{value}</div>
+    </div>
+  );
+}
+
+const TABS = ['about', 'experience', 'reviews'] as const;
+type Tab = (typeof TABS)[number];
+
+/**
+ * The backend stores one average rating per doctor, not per-star counts. Split the bar chart
+ * across the two integers the average sits between — 4.2 becomes 20% five-star, 80% four-star —
+ * so the bars always add back up to the score shown next to them.
+ */
+function ratingBars(rating: number): { star: number; percent: number }[] {
+  const lower = Math.floor(rating);
+  const fraction = rating - lower;
+  return [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    percent: star === lower + 1 ? Math.round(fraction * 100) : star === lower ? Math.round((1 - fraction) * 100) : 0,
+  }));
+}
+
+function ReviewsCard({ rating }: { rating: number }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '22px', padding: '30px' }}>
+      <h2 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 22px' }}>Đánh giá từ bệnh nhân</h2>
+      <div style={{ display: 'flex', gap: '30px', alignItems: 'center', marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '-1.5px', lineHeight: 1 }}>{rating.toFixed(1)}</div>
+          <div style={{ color: 'var(--gold)', fontSize: '15px', letterSpacing: '2px' }}>{'★'.repeat(Math.round(rating))}</div>
+          <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '4px' }}>{doctorReviewCount} đánh giá</div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {ratingBars(rating).map(({ star, percent }) => (
+            <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13.5px', color: 'var(--muted)' }}>
+              <span style={{ width: '10px' }}>{star}</span>
+              <div style={{ flex: 1, height: '8px', borderRadius: '999px', background: 'var(--tint)' }}>
+                <div style={{ width: `${percent}%`, height: '8px', borderRadius: '999px', background: 'var(--gold)' }} />
+              </div>
+              <span style={{ width: '34px', textAlign: 'right' }}>{percent}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ height: '1px', background: 'var(--line)', marginBottom: '20px' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        {doctorReviews.map((review, i) => (
+          <div key={review.author} style={{ display: 'flex', gap: '13px' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: avatarColorFor(i + 1),
+                color: '#fff',
+                display: 'grid',
+                placeItems: 'center',
+                fontWeight: 800,
+                fontSize: '15px',
+                flexShrink: 0,
+              }}
+            >
+              {initialsFor(review.author)}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <b style={{ fontSize: '15.5px' }}>{review.author}</b>
+                <span style={{ color: 'var(--gold)', fontSize: '12px' }}>{'★'.repeat(review.stars)}</span>
+              </div>
+              <p style={{ margin: '4px 0 0', color: 'var(--ink2)', fontSize: '15px', lineHeight: 1.55 }}>{review.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfilePageProps) {
   const [doctor, setDoctor] = useState<DoctorDetail | null>(null);
   const [dates] = useState(() => upcomingDates(4));
@@ -63,6 +200,8 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
   const [symptoms, setSymptoms] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('about');
+  const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchDoctor(doctorId)
@@ -165,6 +304,10 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
                         {starIcon}
                         <b style={{ fontSize: '17px' }}>{doctor.rating.toFixed(1)}</b>
                       </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink2)' }}>
+                        {reviewIcon}
+                        <b>{doctorReviewCount}</b> đánh giá
+                      </div>
                       {doctor.clinic_name && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink2)' }}>
                           {clinicIcon}
@@ -174,7 +317,50 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
                     </div>
                   </div>
                 </div>
-                {doctor.bio && <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'var(--ink2)', margin: '24px 0 0' }}>{doctor.bio}</p>}
+
+                <div style={{ display: 'flex', gap: '28px', borderBottom: '1px solid var(--line)', margin: '24px 0 20px' }}>
+                  {TAB_LABELS.map(({ key, label }) => (
+                    <div
+                      key={key}
+                      onClick={() => {
+                        setTab(key);
+                        if (key === 'reviews') reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      style={{
+                        paddingBottom: '12px',
+                        borderBottom: key === tab ? '2.5px solid var(--brand)' : 'none',
+                        color: key === tab ? 'var(--brand)' : 'var(--muted)',
+                        fontWeight: key === tab ? 700 : 600,
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {key === 'reviews' ? `${label} (${doctorReviewCount})` : label}
+                    </div>
+                  ))}
+                </div>
+
+                {tab === 'experience' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                    <InfoTile icon={experiencePath} label="Số năm kinh nghiệm" value={`${doctor.years_experience} năm`} />
+                    <InfoTile icon={specialtyPath} label="Chuyên khoa" value={doctor.specialty.name} />
+                    <InfoTile icon={buildingPath} label="Nơi công tác" value={doctor.clinic_name ?? 'Bệnh viện Quân y 175'} />
+                    <InfoTile icon={starPath} label="Đánh giá trung bình" value={`${doctor.rating.toFixed(1)} / 5`} />
+                  </div>
+                ) : (
+                  <>
+                    {doctor.bio && <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'var(--ink2)', margin: '0 0 22px' }}>{doctor.bio}</p>}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+                      <InfoTile icon={specialtyPath} label="Chuyên môn" value={doctor.specialty.name} />
+                      <InfoTile icon={experiencePath} label="Kinh nghiệm" value={`${doctor.years_experience} năm`} />
+                      <InfoTile icon={pinPath} label="Địa chỉ" value={HOSPITAL_ADDRESS} />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div ref={reviewsRef}>
+                <ReviewsCard rating={doctor.rating} />
               </div>
             </div>
 
