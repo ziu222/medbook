@@ -143,13 +143,19 @@ button {
   animation: spinnerBreathe 2.4s ease-in-out infinite;
 }
 
-/* Reduced motion: drop every rotation and scale, keep one opacity pulse so the
-   "still working" signal survives without anything actually moving. */
+/* Reduced motion: slow the rotation rather than freeze it. A spinner that stops
+   spinning reads as a hung app, and a small steady rotation is not the kind of
+   motion the preference exists to suppress — parallax and large-area movement is.
+   The halo's scale pulse does go away; that one is decorative. */
 @media (prefers-reduced-motion: reduce) {
-  .spinner-halo,
-  .spinner-arc,
+  .spinner-arc {
+    animation-duration: 2.6s;
+  }
   .spinner-arc-outer {
-    animation: spinnerBreathe 1.8s ease-in-out infinite;
+    animation-duration: 8s;
+  }
+  .spinner-halo {
+    animation: spinnerBreathe 2.6s ease-in-out infinite;
   }
 }
 
