@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { HomePage } from './routes/HomePage';
 import { FindDoctorPage } from './routes/FindDoctorPage';
 import { DoctorProfilePage } from './routes/DoctorProfilePage';
@@ -6,17 +7,70 @@ import { MyAppointmentsPage } from './routes/MyAppointmentsPage';
 import { PatientProfilePage } from './routes/PatientProfilePage';
 import { SpecialtiesPage } from './routes/SpecialtiesPage';
 import { SpecialtyDetailPage } from './routes/SpecialtyDetailPage';
+import { NotFoundPage } from './routes/NotFoundPage';
+import { ScrollToTop } from './components/Common/ScrollToTop';
 import { handleAuthCallback, isAuthenticated } from './lib/auth';
-import type { NavKey } from './components/Common/Header';
+import { PATHS, doctorPath, pathForNavKey, specialtyPath } from './lib/routes';
 
-type Screen = 'home' | 'find' | 'doctor' | 'appointments' | 'profile' | 'specialties' | 'specialty';
+function PatientProfile({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <PatientProfilePage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
+}
+
+function MyAppointments({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <MyAppointmentsPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />
+  );
+}
+
+function Specialties({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <SpecialtiesPage
+      authed={authed}
+      onNavigate={(key) => navigate(pathForNavKey(key))}
+      onSelectSpecialty={(slug) => navigate(specialtyPath(slug))}
+    />
+  );
+}
+
+function SpecialtyDetail({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  const { slug } = useParams();
+  if (!slug) return <NotFoundPage authed={authed} />;
+  return (
+    <SpecialtyDetailPage
+      slug={slug}
+      authed={authed}
+      onNavigate={(key) => navigate(pathForNavKey(key))}
+      onSelectSpecialty={(next) => navigate(specialtyPath(next))}
+      onSelectDoctor={(id) => navigate(doctorPath(id))}
+    />
+  );
+}
+
+function DoctorProfile({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const doctorId = Number(id);
+  if (!Number.isInteger(doctorId) || doctorId < 1) return <NotFoundPage authed={authed} />;
+  return <DoctorProfilePage doctorId={doctorId} authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
+}
+
+function FindDoctor({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <FindDoctorPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />;
+}
+
+function Home({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <HomePage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
+}
 
 function App() {
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
   const [authed, setAuthed] = useState(isAuthenticated());
-  const [screen, setScreen] = useState<Screen>('home');
-  const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
-  const [selectedSpecialtySlug, setSelectedSpecialtySlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!onCallback) return;
@@ -24,44 +78,28 @@ function App() {
       .catch((err) => console.error('Đăng nhập thất bại:', err))
       .finally(() => {
         setAuthed(isAuthenticated());
-        window.history.replaceState({}, '', '/');
+        window.history.replaceState({}, '', PATHS.home);
         setOnCallback(false);
       });
   }, [onCallback]);
 
   if (onCallback) return null;
 
-  const ROUTED: NavKey[] = ['find', 'appointments', 'profile', 'specialties'];
-  const onNavigate = (key: NavKey) => setScreen(ROUTED.includes(key) ? (key as Screen) : 'home');
-  const onSelectSpecialty = (slug: string) => {
-    setSelectedSpecialtySlug(slug);
-    setScreen('specialty');
-    window.scrollTo({ top: 0 });
-  };
-  const onSelectDoctor = (id: number) => {
-    setSelectedDoctorId(id);
-    setScreen('doctor');
-  };
-
-  if (screen === 'doctor' && selectedDoctorId !== null) {
-    return <DoctorProfilePage doctorId={selectedDoctorId} authed={authed} onNavigate={onNavigate} />;
-  }
-  if (screen === 'specialty' && selectedSpecialtySlug !== null) {
-    return (
-      <SpecialtyDetailPage
-        slug={selectedSpecialtySlug}
-        authed={authed}
-        onNavigate={onNavigate}
-        onSelectSpecialty={onSelectSpecialty}
-        onSelectDoctor={onSelectDoctor}
-      />
-    );
-  }
-  if (screen === 'specialties') return <SpecialtiesPage authed={authed} onNavigate={onNavigate} onSelectSpecialty={onSelectSpecialty} />;
-  if (screen === 'profile') return <PatientProfilePage authed={authed} onNavigate={onNavigate} />;
-  if (screen === 'appointments') return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
-  if (screen === 'find') return <FindDoctorPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
-  return <HomePage authed={authed} onNavigate={onNavigate} />;
+  return (
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path={PATHS.home} element={<Home authed={authed} />} />
+        <Route path={PATHS.find} element={<FindDoctor authed={authed} />} />
+        <Route path="/bac-si/:id" element={<DoctorProfile authed={authed} />} />
+        <Route path={PATHS.specialties} element={<Specialties authed={authed} />} />
+        <Route path="/chuyen-khoa/:slug" element={<SpecialtyDetail authed={authed} />} />
+        <Route path={PATHS.appointments} element={<MyAppointments authed={authed} />} />
+        <Route path={PATHS.profile} element={<PatientProfile authed={authed} />} />
+        <Route path="*" element={<NotFoundPage authed={authed} />} />
+      </Routes>
+    </>
+  );
 }
 
 export default App
