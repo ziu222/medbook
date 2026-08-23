@@ -12,7 +12,7 @@ import { handleAuthCallback, isAuthenticated } from './lib/auth';
 import { PATHS, doctorPath, pathForNavKey } from './lib/routes';
 import type { NavKey } from './components/Common/Header';
 
-type Screen = 'find' | 'appointments' | 'profile' | 'specialties' | 'specialty';
+type Screen = 'appointments' | 'profile' | 'specialties' | 'specialty';
 
 /**
  * Screens still driven by local state rather than the URL. Each one moves out to a real route in
@@ -20,11 +20,11 @@ type Screen = 'find' | 'appointments' | 'profile' | 'specialties' | 'specialty';
  */
 function LegacyScreens({ authed }: { authed: boolean }) {
   const navigate = useNavigate();
-  const [screen, setScreen] = useState<Screen>('find');
+  const [screen, setScreen] = useState<Screen>('specialties');
   const [selectedSpecialtySlug, setSelectedSpecialtySlug] = useState<string | null>(null);
 
   const onNavigate = (key: NavKey) => {
-    if (key === 'home' || key === 'ai') {
+    if (key === 'home' || key === 'ai' || key === 'find') {
       navigate(pathForNavKey(key));
       return;
     }
@@ -48,10 +48,9 @@ function LegacyScreens({ authed }: { authed: boolean }) {
       />
     );
   }
-  if (screen === 'specialties') return <SpecialtiesPage authed={authed} onNavigate={onNavigate} onSelectSpecialty={onSelectSpecialty} />;
   if (screen === 'profile') return <PatientProfilePage authed={authed} onNavigate={onNavigate} />;
   if (screen === 'appointments') return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
-  return <FindDoctorPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
+  return <SpecialtiesPage authed={authed} onNavigate={onNavigate} onSelectSpecialty={onSelectSpecialty} />;
 }
 
 function DoctorProfile({ authed }: { authed: boolean }) {
@@ -60,6 +59,13 @@ function DoctorProfile({ authed }: { authed: boolean }) {
   const doctorId = Number(id);
   if (!Number.isInteger(doctorId) || doctorId < 1) return <NotFoundPage authed={authed} />;
   return <DoctorProfilePage doctorId={doctorId} authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
+}
+
+function FindDoctor({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <FindDoctorPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />
+  );
 }
 
 function Home({ authed }: { authed: boolean }) {
@@ -87,6 +93,7 @@ function App() {
   return (
     <Routes>
       <Route path={PATHS.home} element={<Home authed={authed} />} />
+      <Route path={PATHS.find} element={<FindDoctor authed={authed} />} />
       <Route path="/bac-si/:id" element={<DoctorProfile authed={authed} />} />
       <Route path="*" element={<LegacyScreens authed={authed} />} />
     </Routes>
