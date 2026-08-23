@@ -4,16 +4,18 @@ import { FindDoctorPage } from './routes/FindDoctorPage';
 import { DoctorProfilePage } from './routes/DoctorProfilePage';
 import { MyAppointmentsPage } from './routes/MyAppointmentsPage';
 import { PatientProfilePage } from './routes/PatientProfilePage';
+import { SpecialtiesPage } from './routes/SpecialtiesPage';
 import { handleAuthCallback, isAuthenticated } from './lib/auth';
 import type { NavKey } from './components/Common/Header';
 
-type Screen = 'home' | 'find' | 'doctor' | 'appointments' | 'profile';
+type Screen = 'home' | 'find' | 'doctor' | 'appointments' | 'profile' | 'specialties';
 
 function App() {
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
   const [authed, setAuthed] = useState(isAuthenticated());
   const [screen, setScreen] = useState<Screen>('home');
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
+  const [, setSelectedSpecialtySlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!onCallback) return;
@@ -28,7 +30,12 @@ function App() {
 
   if (onCallback) return null;
 
-  const onNavigate = (key: NavKey) => setScreen(key === 'find' || key === 'appointments' || key === 'profile' ? key : 'home');
+  const ROUTED: NavKey[] = ['find', 'appointments', 'profile', 'specialties'];
+  const onNavigate = (key: NavKey) => setScreen(ROUTED.includes(key) ? (key as Screen) : 'home');
+  const onSelectSpecialty = (slug: string) => {
+    setSelectedSpecialtySlug(slug);
+    setScreen('specialties');
+  };
   const onSelectDoctor = (id: number) => {
     setSelectedDoctorId(id);
     setScreen('doctor');
@@ -37,6 +44,7 @@ function App() {
   if (screen === 'doctor' && selectedDoctorId !== null) {
     return <DoctorProfilePage doctorId={selectedDoctorId} authed={authed} onNavigate={onNavigate} />;
   }
+  if (screen === 'specialties') return <SpecialtiesPage authed={authed} onNavigate={onNavigate} onSelectSpecialty={onSelectSpecialty} />;
   if (screen === 'profile') return <PatientProfilePage authed={authed} onNavigate={onNavigate} />;
   if (screen === 'appointments') return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
   if (screen === 'find') return <FindDoctorPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
