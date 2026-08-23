@@ -12,7 +12,7 @@ import { handleAuthCallback, isAuthenticated } from './lib/auth';
 import { PATHS, doctorPath, pathForNavKey, specialtyPath } from './lib/routes';
 import type { NavKey } from './components/Common/Header';
 
-type Screen = 'appointments' | 'profile' | 'specialties';
+type Screen = 'appointments' | 'profile';
 
 /**
  * Screens still driven by local state rather than the URL. Each one moves out to a real route in
@@ -20,21 +20,30 @@ type Screen = 'appointments' | 'profile' | 'specialties';
  */
 function LegacyScreens({ authed }: { authed: boolean }) {
   const navigate = useNavigate();
-  const [screen, setScreen] = useState<Screen>('specialties');
+  const [screen, setScreen] = useState<Screen>('appointments');
 
   const onNavigate = (key: NavKey) => {
-    if (key === 'home' || key === 'ai' || key === 'find') {
+    if (key === 'home' || key === 'ai' || key === 'find' || key === 'specialties') {
       navigate(pathForNavKey(key));
       return;
     }
     setScreen(key as Screen);
   };
-  const onSelectSpecialty = (slug: string) => navigate(specialtyPath(slug));
   const onSelectDoctor = (id: number) => navigate(doctorPath(id));
 
   if (screen === 'profile') return <PatientProfilePage authed={authed} onNavigate={onNavigate} />;
-  if (screen === 'appointments') return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
-  return <SpecialtiesPage authed={authed} onNavigate={onNavigate} onSelectSpecialty={onSelectSpecialty} />;
+  return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
+}
+
+function Specialties({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return (
+    <SpecialtiesPage
+      authed={authed}
+      onNavigate={(key) => navigate(pathForNavKey(key))}
+      onSelectSpecialty={(slug) => navigate(specialtyPath(slug))}
+    />
+  );
 }
 
 function SpecialtyDetail({ authed }: { authed: boolean }) {
@@ -94,6 +103,7 @@ function App() {
       <Route path={PATHS.home} element={<Home authed={authed} />} />
       <Route path={PATHS.find} element={<FindDoctor authed={authed} />} />
       <Route path="/bac-si/:id" element={<DoctorProfile authed={authed} />} />
+      <Route path={PATHS.specialties} element={<Specialties authed={authed} />} />
       <Route path="/chuyen-khoa/:slug" element={<SpecialtyDetail authed={authed} />} />
       <Route path="*" element={<LegacyScreens authed={authed} />} />
     </Routes>
