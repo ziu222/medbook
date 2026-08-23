@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { logout, redirectToLogin, redirectToSignup } from '../../lib/auth';
 
-export type NavKey = 'home' | 'find' | 'specialties' | 'ai' | 'appointments';
+export type NavKey = 'home' | 'find' | 'specialties' | 'ai' | 'appointments' | 'profile';
 
 interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
@@ -18,25 +18,18 @@ const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: 'ai', label: 'Trợ lý AI' },
 ];
 
-const navItemStyle = (isActive: boolean): CSSProperties =>
-  isActive
-    ? {
-        padding: '9px 15px',
-        borderRadius: '10px',
-        fontWeight: 700,
-        fontSize: '15px',
-        cursor: 'pointer',
-        color: 'var(--brand)',
-        background: 'var(--tint)',
-      }
-    : {
-        padding: '9px 15px',
-        borderRadius: '10px',
-        fontWeight: 600,
-        fontSize: '15px',
-        cursor: 'pointer',
-        color: 'var(--ink2)',
-      };
+// whiteSpace matters: the patient links pushed the row past its width and every label
+// started wrapping onto a second line.
+const navItemStyle = (isActive: boolean): CSSProperties => ({
+  padding: '9px 14px',
+  borderRadius: '10px',
+  fontWeight: isActive ? 700 : 600,
+  fontSize: '15px',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  color: isActive ? 'var(--brand)' : 'var(--ink2)',
+  ...(isActive ? { background: 'var(--tint)' } : {}),
+});
 
 export function Header({ active = 'home', authed = false, onNavigate }: HeaderProps) {
   return (
@@ -58,7 +51,7 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
           height: '76px',
           display: 'flex',
           alignItems: 'center',
-          gap: '40px',
+          gap: '28px',
         }}
       >
         <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
@@ -89,6 +82,13 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
                 Lịch hẹn của tôi
               </span>
               <span
+                className={active === 'profile' ? undefined : 'nav-hover-slide'}
+                style={navItemStyle(active === 'profile')}
+                onClick={() => onNavigate?.('profile')}
+              >
+                Hồ sơ
+              </span>
+              <span
                 onClick={logout}
                 className="link-hover"
                 style={{
@@ -98,6 +98,7 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
                   fontWeight: 700,
                   fontSize: '15px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                   color: 'var(--ink)',
                 }}
               >
@@ -116,6 +117,7 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
                   fontWeight: 700,
                   fontSize: '15px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                   color: 'var(--ink)',
                 }}
               >
@@ -132,6 +134,7 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
                   fontWeight: 700,
                   fontSize: '15px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                   boxShadow: 'var(--sh-sm)',
                 }}
               >

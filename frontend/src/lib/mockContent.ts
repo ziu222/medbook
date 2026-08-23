@@ -54,6 +54,30 @@ export const infraTabs: InfraTab[] = [
   },
 ];
 
+export interface DoctorReview {
+  author: string;
+  stars: number;
+  body: string;
+}
+
+// ponytail: no reviews table in the backend (see backend/app/doctors/models.py) — placeholder
+// content so the profile matches the design. Replace with a real endpoint before launch;
+// the rating distribution is derived from the doctor's real rating, only these are invented.
+export const doctorReviewCount = 320;
+
+export const doctorReviews: DoctorReview[] = [
+  {
+    author: 'Nguyễn Hạnh',
+    stars: 5,
+    body: 'Bác sĩ tận tâm, giải thích rất dễ hiểu. Đặt lịch qua MedBook nhanh gọn.',
+  },
+  {
+    author: 'Lê Minh',
+    stars: 5,
+    body: 'Khám kỹ, chờ đúng giờ hẹn. Rất hài lòng!',
+  },
+];
+
 export interface Mood {
   id: string;
   emoji: string;

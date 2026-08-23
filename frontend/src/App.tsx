@@ -3,10 +3,11 @@ import { HomePage } from './routes/HomePage';
 import { FindDoctorPage } from './routes/FindDoctorPage';
 import { DoctorProfilePage } from './routes/DoctorProfilePage';
 import { MyAppointmentsPage } from './routes/MyAppointmentsPage';
+import { PatientProfilePage } from './routes/PatientProfilePage';
 import { handleAuthCallback, isAuthenticated } from './lib/auth';
 import type { NavKey } from './components/Common/Header';
 
-type Screen = 'home' | 'find' | 'doctor' | 'appointments';
+type Screen = 'home' | 'find' | 'doctor' | 'appointments' | 'profile';
 
 function App() {
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
@@ -27,7 +28,7 @@ function App() {
 
   if (onCallback) return null;
 
-  const onNavigate = (key: NavKey) => setScreen(key === 'find' || key === 'appointments' ? key : 'home');
+  const onNavigate = (key: NavKey) => setScreen(key === 'find' || key === 'appointments' || key === 'profile' ? key : 'home');
   const onSelectDoctor = (id: number) => {
     setSelectedDoctorId(id);
     setScreen('doctor');
@@ -36,6 +37,7 @@ function App() {
   if (screen === 'doctor' && selectedDoctorId !== null) {
     return <DoctorProfilePage doctorId={selectedDoctorId} authed={authed} onNavigate={onNavigate} />;
   }
+  if (screen === 'profile') return <PatientProfilePage authed={authed} onNavigate={onNavigate} />;
   if (screen === 'appointments') return <MyAppointmentsPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
   if (screen === 'find') return <FindDoctorPage authed={authed} onNavigate={onNavigate} onSelectDoctor={onSelectDoctor} />;
   return <HomePage authed={authed} onNavigate={onNavigate} />;
