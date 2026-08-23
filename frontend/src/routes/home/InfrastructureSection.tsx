@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageSlot } from '../../components/Common/ImageSlot';
-import { infraTabs } from '../../lib/mockContent';
+import { infraTabs, infraVideoPoster } from '../../lib/mockContent';
 
 export function InfrastructureSection() {
   const [activeId, setActiveId] = useState(infraTabs[0].id);
@@ -23,7 +23,7 @@ export function InfrastructureSection() {
             marginTop: 'auto',
           }}
         >
-          <ImageSlot placeholder="Video giới thiệu bệnh viện" shape="rect" fit="cover" />
+          <ImageSlot src={infraVideoPoster} placeholder="Video giới thiệu bệnh viện" shape="rect" fit="cover" />
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
             <div
               style={{
@@ -67,9 +67,9 @@ export function InfrastructureSection() {
         <h3 style={{ fontSize: '21px', fontWeight: 800, letterSpacing: '-.3px', margin: '24px 0 12px' }}>{active.title}</h3>
         <p style={{ color: 'var(--ink2)', fontSize: '16px', lineHeight: 1.65, margin: '0 0 22px' }}>{active.description}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="card-hover-lift" style={{ aspectRatio: '3 / 4', borderRadius: '14px', overflow: 'hidden', background: 'var(--tint)' }}>
-              <ImageSlot placeholder="Ảnh" shape="rect" fit="cover" />
+          {active.images.map((src, i) => (
+            <div key={src} className="card-hover-lift" style={{ aspectRatio: '3 / 4', borderRadius: '14px', overflow: 'hidden', background: 'var(--tint)' }}>
+              <ImageSlot className="img-zoom" src={src} placeholder={`${active.title} ${i + 1}`} shape="rect" fit="cover" />
             </div>
           ))}
         </div>

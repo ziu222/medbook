@@ -7,7 +7,7 @@ interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
   authed?: boolean;
-  /** 'specialties' also lands on Find, 'ai' is a no-op. 'appointments' only shows once authed. */
+  /** 'ai' is still a no-op. 'appointments' and 'profile' only show once authed. */
   onNavigate?: (key: NavKey) => void;
 }
 
@@ -64,7 +64,7 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
               key={item.key}
               className={item.key === active ? undefined : 'nav-hover-slide'}
               style={navItemStyle(item.key === active)}
-              onClick={() => onNavigate?.(item.key === 'specialties' ? 'find' : item.key)}
+              onClick={() => onNavigate?.(item.key)}
             >
               {item.label}
             </span>

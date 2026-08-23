@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageSlot } from '../../components/Common/ImageSlot';
-import { feedbackMoods } from '../../lib/mockContent';
+import { feedbackMoods, feedbackPhoto } from '../../lib/mockContent';
 
 const inputStyle = {
   width: '100%',
@@ -24,7 +24,7 @@ export function FeedbackFormSection() {
         </div>
         <h2 style={{ fontSize: '38px', fontWeight: 800, letterSpacing: '-.8px', margin: '12px 0 24px' }}>Đánh giá chất lượng</h2>
         <div className="card-hover-lift" style={{ aspectRatio: '4 / 3', borderRadius: '20px', overflow: 'hidden', background: 'var(--tint)', boxShadow: 'var(--sh)' }}>
-          <ImageSlot placeholder="Nhân viên y tế & bệnh nhân" shape="rect" fit="cover" />
+          <ImageSlot className="img-zoom" src={feedbackPhoto} placeholder="Nhân viên y tế & bệnh nhân" shape="rect" fit="cover" />
         </div>
       </div>
 
