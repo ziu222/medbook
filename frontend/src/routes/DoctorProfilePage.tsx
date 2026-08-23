@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
-import { bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
+import { ApiError, bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
 import { doctorReviewCount, doctorReviews } from '../lib/mockContent';
@@ -200,6 +200,7 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
   const [symptoms, setSymptoms] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [tab, setTab] = useState<Tab>('about');
   const reviewsRef = useRef<HTMLDivElement>(null);
 
@@ -237,6 +238,13 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
       const payment = await startPayment(appointment.id);
       window.location.assign(payment.checkout_url);
     } catch (err) {
+      // The API rejects booking until the account has a profile row. Say so in Vietnamese and
+      // point at the page that fixes it, instead of surfacing the raw backend string.
+      if (err instanceof ApiError && err.status === 409 && err.message.includes('user profile')) {
+        setNeedsProfile(true);
+        setSubmitting(false);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Đặt lịch thất bại, vui lòng thử lại.');
       setSubmitting(false);
     }
@@ -457,6 +465,21 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
               )}
 
               {error && <div style={{ color: '#d9573f', fontSize: '13.5px', marginBottom: '14px' }}>{error}</div>}
+
+              {needsProfile && (
+                <div className="fade-up" style={{ background: 'var(--sand)', border: '1px solid var(--peach)', borderRadius: '14px', padding: '15px 16px', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: 'var(--ink2)', lineHeight: 1.55, marginBottom: '12px' }}>
+                    Bạn cần hoàn tất hồ sơ cá nhân trước khi đặt lịch — bệnh viện cần họ tên và số điện thoại để xác nhận.
+                  </div>
+                  <div
+                    onClick={() => onNavigate('profile')}
+                    className="btn-hover"
+                    style={{ textAlign: 'center', padding: '11px', borderRadius: '11px', background: 'var(--brand-grad)', color: '#fff', fontWeight: 700, fontSize: '14.5px', cursor: 'pointer' }}
+                  >
+                    Hoàn tất hồ sơ
+                  </div>
+                </div>
+              )}
 
               <div
                 onClick={canConfirm ? handleConfirm : undefined}

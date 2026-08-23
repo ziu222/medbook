@@ -106,6 +106,25 @@ export function getAccessToken(): string | null {
 
 export const isAuthenticated = (): boolean => getAccessToken() !== null;
 
+/**
+ * Claims off the stored ID token. Read-only display only — the backend verifies its own copy,
+ * so nothing here is trusted for authorisation. Email lives here rather than in user_profiles.
+ */
+export function getIdTokenClaims(): { email?: string; name?: string } | null {
+  const raw = sessionStorage.getItem(TOKENS_KEY);
+  if (!raw) return null;
+  try {
+    const { id_token }: StoredTokens = JSON.parse(raw);
+    const payload = id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    // atob yields a latin1 byte string — decoding it as UTF-8 is what keeps "Trọng Nghĩa"
+    // from arriving as "TrÃ¡Â»ng NghÄ©a".
+    const bytes = Uint8Array.from(atob(payload), (ch) => ch.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return null;
+  }
+}
+
 export function logout(): void {
   sessionStorage.removeItem(TOKENS_KEY);
   const { domain, clientId } = requireConfig();
