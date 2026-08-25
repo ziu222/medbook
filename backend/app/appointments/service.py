@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import secrets
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -20,6 +21,7 @@ from app.appointments.schemas import (
 from app.cancellations.models import (
     AppointmentPolicyAssignment,
     AppointmentStatusEvent,
+    NotificationOutbox,
 )
 from app.cancellations.service import assign_active_policy
 from app.doctors.models import DoctorBlockedSlot, DoctorProfile, DoctorWorkingDay
@@ -191,6 +193,25 @@ def create_appointment(
     session.add(appointment)
     try:
         assign_active_policy(session, appointment)
+        session.flush()
+        session.add(
+            NotificationOutbox(
+                event_type="appointment_booked",
+                aggregate_id=appointment.id,
+                payload=json.dumps(
+                    {
+                        "booker_sub": appointment.booker_cognito_sub,
+                        "appointment_id": appointment.id,
+                        "patient_full_name": appointment.patient_full_name,
+                        "appointment_date": appointment.appointment_date.isoformat(),
+                        "start_time": appointment.start_time.isoformat(),
+                    },
+                    ensure_ascii=False,
+                ),
+                status="pending",
+                attempts=0,
+            )
+        )
         session.commit()
     except IntegrityError as error:
         session.rollback()

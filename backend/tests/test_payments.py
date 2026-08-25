@@ -119,6 +119,7 @@ def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
             assert refund.status == "succeeded"
             assert refund.amount_vnd == 200_000
             assert set(session.scalars(select(NotificationOutbox.event_type))) == {
+                "appointment_booked",
                 "payment_confirmed",
                 "appointment_cancelled",
             }
