@@ -41,16 +41,6 @@ def handler(event, context):
             count = dispatch_notifications(session)
         return {"statusCode": 200, "body": f"{count} notifications queued"}
 
-    if event.get("operation") == "record-refund-result":
-        from sqlalchemy.orm import Session
-
-        from app.core.database import get_engine
-        from app.payments.service import record_refund_result
-
-        with Session(get_engine()) as session:
-            record_refund_result(session, event)
-        return {"statusCode": 200, "body": "Refund result recorded"}
-
     if event.get("Records") and all(
         record.get("eventSource") == "aws:sqs" for record in event["Records"]
     ):

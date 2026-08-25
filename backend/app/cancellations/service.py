@@ -207,7 +207,7 @@ def cancel_appointment(
         policy_id=policy.id,
         minutes_before=minutes_before,
         refund_percentage=refund_percentage,
-        refund_status="pending" if refund else "not_applicable",
+        refund_status=refund.status if refund else "not_applicable",
     )
     appointment.status = "cancelled"
     session.add(event)

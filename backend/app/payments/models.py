@@ -31,7 +31,7 @@ class Payment(Base):
     appointment_id: Mapped[int] = mapped_column(
         ForeignKey("appointments.id", ondelete="RESTRICT"), index=True
     )
-    provider: Mapped[str] = mapped_column(String(20), default="vnpay")
+    provider: Mapped[str] = mapped_column(String(20), default="manual")
     amount_vnd: Mapped[int] = mapped_column(Integer)
     txn_ref: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), default="pending")
