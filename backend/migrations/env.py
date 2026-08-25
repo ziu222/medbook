@@ -1,9 +1,11 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
-from app.appointments.models import Appointment, PatientDependent  # noqa: F401
+from app.appointments.models import (  # noqa: F401
+    Appointment,
+    MedicalRecord,
+    PatientDependent,
+)
 from app.cancellations.models import (  # noqa: F401
     AppointmentPolicyAssignment,
     AppointmentStatusEvent,
@@ -13,9 +15,17 @@ from app.cancellations.models import (  # noqa: F401
 )
 from app.core.config import get_database_url
 from app.core.database import Base
-from app.doctors.models import DoctorProfile, Specialty  # noqa: F401
+from app.doctors.models import (  # noqa: F401
+    DoctorBlockedSlot,
+    DoctorProfile,
+    DoctorReview,
+    DoctorWorkingDay,
+    Facility,
+    Specialty,
+)
 from app.payments.models import Payment, Refund  # noqa: F401
 from app.users.models import UserProfile  # noqa: F401
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_database_url().replace("%", "%%"))
