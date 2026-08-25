@@ -49,6 +49,7 @@ data "aws_iam_policy_document" "lambda_database_secret" {
     resources = [
       var.database_secret_arn,
       var.vnpay_secret_arn,
+      aws_secretsmanager_secret.gemini.arn,
     ]
   }
 }
@@ -112,6 +113,8 @@ resource "aws_lambda_function" "api" {
       VNPAY_SECRET_ARN       = var.vnpay_secret_arn
       VNPAY_PAY_URL          = var.vnpay_pay_url
       VNPAY_RETURN_URL       = var.vnpay_return_url
+      GEMINI_MODEL           = "gemini-3.5-flash-lite"
+      GEMINI_SECRET_ARN      = aws_secretsmanager_secret.gemini.arn
     }
   }
 
@@ -192,6 +195,9 @@ resource "aws_apigatewayv2_route" "public_catalog" {
     "GET /api/doctors",
     "GET /api/doctors/{doctor_id}",
     "GET /api/doctors/{doctor_id}/availability",
+    "GET /api/doctors/{doctor_id}/reviews",
+    "GET /api/facilities",
+    "GET /api/facilities/{facility_id}",
   ])
 
   api_id             = aws_apigatewayv2_api.main.id
