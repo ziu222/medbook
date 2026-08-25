@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.chat.core_handler import _execute
 from app.chat.schemas import ToolIdentity
 from app.core.database import get_engine
-from app.recommendations.schemas import SymptomInput
+from app.recommendations.schemas import RecommendationInput, SymptomInput
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -180,10 +180,35 @@ def _response(status_code: int, body: dict) -> dict:
 def handler(event, _context):
     try:
         identity = _identity(event)
-        if event.get("routeKey") != "POST /api/symptoms/classify":
-            return _response(404, {"detail": "Not found"})
-        data = SymptomInput.model_validate(_body(event))
-        return _response(200, _classify(data.description, identity))
+        route = event.get("routeKey")
+        body = _body(event)
+        if route == "POST /api/symptoms/classify":
+            data = SymptomInput.model_validate(body)
+            return _response(200, _classify(data.description, identity))
+        if route == "POST /api/recommendations/doctors":
+            data = RecommendationInput.model_validate(body)
+            classification = _classify(data.description, identity)
+            doctors = []
+            if not classification["urgent"]:
+                doctors = _invoke_core(
+                    "search_doctors",
+                    {
+                        "specialty_id": classification["specialty_id"],
+                        "appointment_date": data.appointment_date.isoformat(),
+                        "facility_id": data.facility_id,
+                    },
+                    identity,
+                )
+                for doctor in doctors:
+                    doctor["factors"] = [
+                        "Chuyên khoa: {}".format(doctor["specialty_name"]),
+                        "Đánh giá: {}".format(doctor["rating"]),
+                        "Slot trống: {}".format(len(doctor["available_slots"])),
+                    ]
+            return _response(
+                200, {"classification": classification, "doctors": doctors}
+            )
+        return _response(404, {"detail": "Not found"})
     except (ValidationError, ValueError, json.JSONDecodeError):
         return _response(422, {"detail": "Invalid request"})
     except (
