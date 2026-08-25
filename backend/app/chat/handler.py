@@ -13,7 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.chat.core_handler import _execute
-from app.chat.schemas import ToolIdentity
+from app.chat.schemas import ChatInput, ToolIdentity
 from app.core.database import get_engine
 from app.recommendations.schemas import RecommendationInput, SymptomInput
 
@@ -32,6 +32,57 @@ EMERGENCY_TERMS = (
     "liệt nửa người",
     "tự tử",
 )
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_doctors",
+            "description": "Tìm bác sĩ thật trong MedBook theo chuyên khoa và lịch trống.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "specialty_id": {"type": "integer", "minimum": 1},
+                    "appointment_date": {"type": "string", "format": "date"},
+                    "facility_id": {"type": "integer", "minimum": 1},
+                    "name": {"type": "string"},
+                },
+                "required": ["specialty_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_doctor_schedule",
+            "description": "Xem các giờ trống của một bác sĩ trong một ngày.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "doctor_id": {"type": "integer", "minimum": 1},
+                    "appointment_date": {"type": "string", "format": "date"},
+                },
+                "required": ["doctor_id", "appointment_date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_my_appointments",
+            "description": "Xem lịch hẹn thuộc về chính người dùng đã đăng nhập.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "appointment_date": {"type": "string", "format": "date"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "confirmed", "completed", "cancelled"],
+                    },
+                },
+            },
+        },
+    },
+]
 
 
 @cache
@@ -45,16 +96,30 @@ def _gemini_api_key() -> str:
     return secret["api_key"]
 
 
-def _gemini(contents: list[dict], system_instruction: str) -> dict:
+def _gemini(
+    contents: list[dict],
+    system_instruction: str,
+    *,
+    tools: list[dict] | None = None,
+    response_json: bool = False,
+) -> dict:
+    generation_config = {
+        "temperature": 0,
+        "maxOutputTokens": 500,
+    }
+    if response_json:
+        generation_config["responseMimeType"] = "application/json"
     payload = {
         "systemInstruction": {"parts": [{"text": system_instruction}]},
         "contents": contents,
-        "generationConfig": {
-            "temperature": 0,
-            "maxOutputTokens": 500,
-            "responseMimeType": "application/json",
-        },
+        "generationConfig": generation_config,
     }
+    if tools:
+        payload["tools"] = [
+            {"functionDeclarations": [tool["function"] for tool in tools]}
+        ]
+        payload["toolConfig"] = {"functionCallingConfig": {"mode": "AUTO"}}
+
     request = Request(
         GEMINI_URL.format(model=os.getenv("GEMINI_MODEL", DEFAULT_MODEL)),
         data=json.dumps(payload).encode(),
@@ -155,6 +220,7 @@ def _classify(description: str, identity: ToolIdentity) -> dict:
             "Bạn chỉ định hướng chuyên khoa, không chẩn đoán. Chọn đúng một "
             "chuyên khoa trong danh sách và trả JSON gồm specialty_id, reason."
         ),
+        response_json=True,
     )
     result = json.loads(_response_text(response))
     specialty = next(
@@ -167,6 +233,41 @@ def _classify(description: str, identity: ToolIdentity) -> dict:
         "reason": str(result.get("reason", "Phù hợp với mô tả triệu chứng."))[:300],
         "emergency_message": None,
     }
+
+
+def _chat(message: str, identity: ToolIdentity) -> dict:
+    if _is_emergency(message):
+        return {"reply": _emergency_response()["emergency_message"], "tools_used": []}
+    specialties = _invoke_core("list_specialties", {}, identity)
+    system_instruction = (
+        "Bạn là trợ lý định hướng đặt lịch MedBook, không chẩn đoán hay kê đơn. "
+        "Chỉ nói về bác sĩ, lịch và cuộc hẹn dựa trên kết quả tool; không tự bịa. "
+        "Nếu có dấu hiệu nguy hiểm, yêu cầu gọi 115 hoặc đi cấp cứu. "
+        f"Chuyên khoa hợp lệ: {json.dumps(specialties, ensure_ascii=False)}"
+    )
+    contents = [{"role": "user", "parts": [{"text": message}]}]
+    first = _gemini(contents, system_instruction, tools=TOOLS)
+    assistant = first["candidates"][0]["content"]
+    tool_calls = [
+        part["functionCall"] for part in assistant["parts"] if "functionCall" in part
+    ][:2]
+    if not tool_calls:
+        return {"reply": _response_text(first), "tools_used": []}
+
+    contents.append(assistant)
+    used = []
+    responses = []
+    for call in tool_calls:
+        name = call["name"]
+        result = _invoke_core(name, call.get("args", {}), identity)
+        used.append(name)
+        function_response = {"name": name, "response": {"result": result}}
+        if call.get("id"):
+            function_response["id"] = call["id"]
+        responses.append({"functionResponse": function_response})
+    contents.append({"role": "user", "parts": responses})
+    final = _gemini(contents, system_instruction, tools=TOOLS)
+    return {"reply": _response_text(final), "tools_used": used}
 
 
 def _response(status_code: int, body: dict) -> dict:
@@ -182,6 +283,9 @@ def handler(event, _context):
         identity = _identity(event)
         route = event.get("routeKey")
         body = _body(event)
+        if route == "POST /api/chat":
+            data = ChatInput.model_validate(body)
+            return _response(200, _chat(data.message, identity))
         if route == "POST /api/symptoms/classify":
             data = SymptomInput.model_validate(body)
             return _response(200, _classify(data.description, identity))

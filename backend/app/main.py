@@ -25,6 +25,7 @@ asgi_handler = Mangum(app, lifespan="off")
 
 def handler(event, context):
     if event.get("routeKey") in {
+        "POST /api/chat",
         "POST /api/symptoms/classify",
         "POST /api/recommendations/doctors",
     }:

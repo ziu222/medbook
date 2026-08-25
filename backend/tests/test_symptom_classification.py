@@ -40,7 +40,7 @@ def test_classification_uses_valid_specialty(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.chat.handler._gemini",
-        lambda *_args: {
+        lambda *_args, **_kwargs: {
             "candidates": [
                 {
                     "content": {
