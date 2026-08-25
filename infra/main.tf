@@ -1,7 +1,7 @@
 locals {
   name          = var.project
   vpc_cidr      = "10.0.0.0/16"
-  image_sha     = "test-10"
+  image_sha     = "test-15"
   vnpay_pay_url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
   vnpay_api_url = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
 
@@ -18,11 +18,14 @@ data "aws_availability_zones" "available" {
 module "network" {
   source = "./modules/network"
 
-  aws_region = var.aws_region
-  vpc_cidr   = local.vpc_cidr
+  vpc_cidr = local.vpc_cidr
   private_subnets = {
     (data.aws_availability_zones.available.names[0]) = cidrsubnet(local.vpc_cidr, 8, 10)
     (data.aws_availability_zones.available.names[1]) = cidrsubnet(local.vpc_cidr, 8, 11)
+  }
+  public_subnet = {
+    availability_zone = data.aws_availability_zones.available.names[0]
+    cidr_block        = cidrsubnet(local.vpc_cidr, 8, 0)
   }
 
   tags = local.common_tags
