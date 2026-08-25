@@ -1,10 +1,5 @@
 from datetime import UTC, datetime, time, timedelta
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
-
 from app.appointments.models import Appointment
 from app.cancellations.models import CancellationPolicy, NotificationOutbox, RefundTier
 from app.core.auth import CurrentUser, get_current_user
@@ -13,6 +8,10 @@ from app.doctors.models import DoctorProfile, DoctorWorkingDay, Specialty
 from app.main import app
 from app.payments.models import Payment, Refund
 from app.users.models import UserProfile
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 
 def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
