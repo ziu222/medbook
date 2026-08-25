@@ -1,7 +1,4 @@
-import hashlib
-import hmac
 from datetime import UTC, datetime, time, timedelta
-from urllib.parse import parse_qs, urlencode, urlparse
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -17,15 +14,8 @@ from app.main import app
 from app.payments.models import Payment, Refund
 from app.users.models import UserProfile
 
-SECRET = "test-secret"
 
-
-def _sign(values: dict[str, str]) -> str:
-    data = urlencode(sorted(values.items()))
-    return hmac.new(SECRET.encode(), data.encode(), hashlib.sha512).hexdigest()
-
-
-def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> None:
+def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -61,11 +51,6 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
                             min_minutes_before=1440,
                             refund_percentage=100,
                         ),
-                        RefundTier(
-                            actor_role="provider",
-                            min_minutes_before=0,
-                            refund_percentage=100,
-                        ),
                     ],
                 ),
             ]
@@ -90,15 +75,6 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         subject="patient-sub", groups=frozenset({"patient"})
     )
-    monkeypatch.setattr(
-        "app.payments.service.get_vnpay_credentials",
-        lambda: {
-            "tmn_code": "TESTCODE",
-            "hash_secret": SECRET,
-            "pay_url": "https://sandbox.vnpayment.vn/pay",
-            "return_url": "https://medbook.example/payment/result",
-        },
-    )
 
     try:
         client = TestClient(app)
@@ -113,103 +89,41 @@ def test_vnpay_signature_amount_idempotency_and_refund_outbox(monkeypatch) -> No
             },
         )
         appointment_id = booked.json()["id"]
-        started = client.post(f"/api/appointments/{appointment_id}/payment")
-        assert started.status_code == 201
-        assert started.json()["amount_vnd"] == 150_000
 
-        params = {
-            key: values[0]
-            for key, values in parse_qs(
-                urlparse(started.json()["checkout_url"]).query
-            ).items()
+        paid = client.post(f"/api/appointments/{appointment_id}/payment")
+        assert paid.status_code == 201
+        assert paid.json() == {
+            "appointment_id": appointment_id,
+            "provider": "manual",
+            "amount_vnd": 200_000,
+            "status": "paid",
+            "expires_at": paid.json()["expires_at"],
         }
-        assert hmac.compare_digest(params.pop("vnp_SecureHash"), _sign(params))
-
-        ipn = {
-            "vnp_TmnCode": "TESTCODE",
-            "vnp_TxnRef": params["vnp_TxnRef"],
-            "vnp_Amount": "15000000",
-            "vnp_ResponseCode": "00",
-            "vnp_TransactionStatus": "00",
-            "vnp_TransactionNo": "123456",
-            "vnp_PayDate": "20260819120000",
-        }
-        forged = ipn | {"vnp_Amount": "10000"}
-        forged["vnp_SecureHash"] = _sign(forged)
-        assert (
-            client.get("/api/payments/vnpay/ipn", params=forged).json()["RspCode"]
-            == "04"
+        assert client.post(f"/api/appointments/{appointment_id}/payment").json() == (
+            paid.json()
         )
 
-        ipn["vnp_SecureHash"] = _sign(ipn)
-        assert (
-            client.get("/api/payments/vnpay/ipn", params=ipn).json()["RspCode"] == "00"
-        )
-        assert (
-            client.get("/api/payments/vnpay/ipn", params=ipn).json()["RspCode"] == "02"
-        )
+        with Session(engine) as session:
+            assert session.get(Appointment, appointment_id).status == "confirmed"
+            assert session.scalar(select(Payment)).status == "paid"
 
         cancelled = client.post(
             f"/api/appointments/{appointment_id}/cancel",
             json={"reason": "Thay đổi kế hoạch"},
         )
-        assert cancelled.json()["refund_status"] == "pending"
-        with Session(engine) as session:
-            assert session.scalar(select(Payment)).status == "paid"
-            assert session.scalar(select(Refund)).amount_vnd == 150_000
-            event_types = set(session.scalars(select(NotificationOutbox.event_type)))
-            assert event_types == {"appointment_cancelled", "payment_refund_requested"}
+        assert cancelled.status_code == 200
+        assert cancelled.json()["refund_status"] == "succeeded"
 
-        late_booking = client.post(
-            "/api/appointments",
-            json={
-                "doctor_id": doctor_id,
-                "appointment_date": work_date.isoformat(),
-                "start_time": "08:30",
-                "booking_for": "self",
-                "symptoms": "Đau đầu",
-            },
-        ).json()
-        late_payment = client.post(
-            f"/api/appointments/{late_booking['id']}/payment"
-        ).json()
-        late_params = {
-            key: values[0]
-            for key, values in parse_qs(
-                urlparse(late_payment["checkout_url"]).query
-            ).items()
-        }
-        late_params.pop("vnp_SecureHash")
-        cancelled_before_ipn = client.post(
-            f"/api/appointments/{late_booking['id']}/cancel",
-            json={"reason": "Hủy khi đang thanh toán"},
-        )
-        assert cancelled_before_ipn.json()["refund_status"] == "not_applicable"
-
-        late_ipn = {
-            "vnp_TmnCode": "TESTCODE",
-            "vnp_TxnRef": late_params["vnp_TxnRef"],
-            "vnp_Amount": "15000000",
-            "vnp_ResponseCode": "00",
-            "vnp_TransactionStatus": "00",
-            "vnp_TransactionNo": "654321",
-            "vnp_PayDate": "20260819120500",
-        }
-        late_ipn["vnp_SecureHash"] = _sign(late_ipn)
-        assert (
-            client.get("/api/payments/vnpay/ipn", params=late_ipn).json()["RspCode"]
-            == "00"
-        )
         with Session(engine) as session:
-            assert session.get(Appointment, late_booking["id"]).status == "cancelled"
-            late_payment_row = session.scalar(
-                select(Payment).where(Payment.appointment_id == late_booking["id"])
-            )
-            assert late_payment_row.status == "paid"
-            late_refund = session.scalar(
-                select(Refund).where(Refund.payment_id == late_payment_row.id)
-            )
-            assert late_refund.percentage == 100
+            assert session.scalar(select(Payment)).status == "refunded"
+            refund = session.scalar(select(Refund))
+            assert refund.status == "succeeded"
+            assert refund.amount_vnd == 200_000
+            assert set(session.scalars(select(NotificationOutbox.event_type))) == {
+                "appointment_booked",
+                "payment_confirmed",
+                "appointment_cancelled",
+            }
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
