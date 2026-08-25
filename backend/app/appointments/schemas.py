@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 Relationship = Literal["father", "mother", "child", "spouse", "sibling", "other"]
+AppointmentStatus = Literal["pending", "confirmed", "completed", "cancelled"]
 
 
 class RelativeInput(BaseModel):
@@ -67,5 +68,40 @@ class AppointmentRead(BaseModel):
     appointment_date: date
     start_time: time
     end_time: time
-    status: str
+    status: AppointmentStatus
     created_at: datetime
+
+
+class AppointmentStatusEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    to_status: AppointmentStatus
+    actor_role: str
+    reason: str
+    created_at: datetime
+
+
+class AppointmentDetail(AppointmentRead):
+    doctor_name: str
+    specialty_name: str
+    facility_name: str | None
+    payment_status: str | None
+    status_history: list[AppointmentStatusEventRead]
+
+
+class MedicalRecordPut(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    clinical_notes: str = Field(min_length=1, max_length=5000)
+    diagnosis: str | None = Field(default=None, max_length=1000)
+    prescription: str | None = Field(default=None, max_length=2000)
+
+
+class MedicalRecordRead(MedicalRecordPut):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    appointment_id: int
+    doctor_id: int
+    created_at: datetime
+    updated_at: datetime

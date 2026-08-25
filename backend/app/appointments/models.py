@@ -9,6 +9,7 @@ from sqlalchemy import (
     String,
     Text,
     Time,
+    UniqueConstraint,
     func,
     text,
 )
@@ -86,6 +87,29 @@ class Appointment(Base):
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
     status: Mapped[str] = mapped_column(String(10), default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class MedicalRecord(Base):
+    __tablename__ = "medical_records"
+    __table_args__ = (
+        UniqueConstraint("appointment_id", name="uq_medical_record_appointment"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[int] = mapped_column(index=True)
+    patient_cognito_sub: Mapped[str] = mapped_column(String(128), index=True)
+    clinical_notes: Mapped[str] = mapped_column(Text)
+    diagnosis: Mapped[str | None] = mapped_column(String(1000))
+    prescription: Mapped[str | None] = mapped_column(String(2000))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

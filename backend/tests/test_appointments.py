@@ -1,17 +1,20 @@
 from datetime import UTC, datetime, time, timedelta
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
-
-from app.appointments.models import PatientDependent
-from app.cancellations.models import CancellationPolicy, RefundTier
+from app.appointments.models import Appointment, PatientDependent
+from app.cancellations.models import (
+    AppointmentStatusEvent,
+    CancellationPolicy,
+    RefundTier,
+)
 from app.core.auth import CurrentUser, get_current_user
 from app.core.database import Base, get_session
 from app.doctors.models import DoctorProfile, DoctorWorkingDay, Specialty
 from app.main import app
 from app.users.models import UserProfile
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 
 def test_booking_self_relative_availability_and_role_views() -> None:
@@ -34,6 +37,12 @@ def test_booking_self_relative_availability_and_role_views() -> None:
         session.add_all(
             [
                 doctor,
+                DoctorProfile(
+                    cognito_sub="other-doctor-sub",
+                    specialty=specialty,
+                    display_name="Bác sĩ Bình",
+                    years_experience=8,
+                ),
                 CancellationPolicy(
                     patient_cancel_cutoff_minutes=1440,
                     provider_cancel_cutoff_minutes=None,
@@ -101,6 +110,7 @@ def test_booking_self_relative_availability_and_role_views() -> None:
         booked = client.post("/api/appointments", json=self_booking)
         assert booked.status_code == 201
         assert booked.json()["patient_full_name"] == "Nguyễn Văn A"
+        appointment_id = booked.json()["id"]
 
         duplicate = client.post("/api/appointments", json=self_booking)
         assert duplicate.status_code == 409
@@ -131,6 +141,24 @@ def test_booking_self_relative_availability_and_role_views() -> None:
         mine = client.get("/api/appointments/me")
         assert mine.status_code == 200
         assert len(mine.json()) == 3
+        filtered = client.get(
+            "/api/appointments/me",
+            params={
+                "date": work_date,
+                "status": "pending",
+                "limit": 1,
+                "offset": 1,
+            },
+        )
+        assert filtered.status_code == 200
+        assert len(filtered.json()) == 1
+        assert client.get(f"/api/appointments/{appointment_id}").status_code == 200
+
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            subject="other-patient-sub",
+            groups=frozenset({"patient"}),
+        )
+        assert client.get(f"/api/appointments/{appointment_id}").status_code == 404
 
         with Session(engine) as session:
             dependents = list(session.scalars(select(PatientDependent)))
@@ -143,10 +171,58 @@ def test_booking_self_relative_availability_and_role_views() -> None:
         )
         doctor_view = client.get(
             "/api/doctor/appointments",
-            params={"date": work_date},
+            params={"date": work_date, "status": "pending", "limit": 2, "offset": 1},
         )
         assert doctor_view.status_code == 200
-        assert len(doctor_view.json()) == 3
+        assert len(doctor_view.json()) == 2
+        assert client.get(f"/api/appointments/{appointment_id}").status_code == 200
+        assert (
+            client.post(
+                f"/api/doctor/appointments/{appointment_id}/complete"
+            ).status_code
+            == 409
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            subject="other-doctor-sub",
+            groups=frozenset({"doctor"}),
+        )
+        assert client.get(f"/api/appointments/{appointment_id}").status_code == 404
+
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            subject="doctor-sub",
+            groups=frozenset({"doctor"}),
+        )
+        with Session(engine) as session:
+            appointment = session.get(Appointment, appointment_id)
+            appointment.status = "confirmed"
+            appointment.appointment_date = work_date - timedelta(days=2)
+            session.commit()
+
+        completed = client.post(f"/api/doctor/appointments/{appointment_id}/complete")
+        assert completed.status_code == 200
+        assert completed.json()["status"] == "completed"
+        assert (
+            client.post(f"/api/doctor/appointments/{appointment_id}/complete").json()
+            == completed.json()
+        )
+        assert (
+            len(
+                client.get(
+                    "/api/doctor/appointments",
+                    params={"status": "completed"},
+                ).json()
+            )
+            == 1
+        )
+        with Session(engine) as session:
+            event = session.scalar(
+                select(AppointmentStatusEvent).where(
+                    AppointmentStatusEvent.appointment_id == appointment_id,
+                    AppointmentStatusEvent.to_status == "completed",
+                )
+            )
+            assert event.actor_sub == "doctor-sub"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
