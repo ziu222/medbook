@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import boto3
@@ -239,6 +239,40 @@ def cancel_appointment(
 
 
 def dispatch_notifications(session: Session) -> int:
+    tomorrow = datetime.now(APP_TIMEZONE).date() + timedelta(days=1)
+    appointments = session.scalars(
+        select(Appointment).where(
+            Appointment.appointment_date == tomorrow,
+            Appointment.status == "confirmed",
+        )
+    )
+    for appointment in appointments:
+        exists = session.scalar(
+            select(NotificationOutbox.id).where(
+                NotificationOutbox.event_type == "appointment_reminder",
+                NotificationOutbox.aggregate_id == appointment.id,
+            )
+        )
+        if not exists:
+            session.add(
+                NotificationOutbox(
+                    event_type="appointment_reminder",
+                    aggregate_id=appointment.id,
+                    payload=json.dumps(
+                        {
+                            "booker_sub": appointment.booker_cognito_sub,
+                            "appointment_id": appointment.id,
+                            "patient_full_name": appointment.patient_full_name,
+                            "appointment_date": appointment.appointment_date.isoformat(),
+                            "start_time": appointment.start_time.isoformat(),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    status="pending",
+                    attempts=0,
+                )
+            )
+    session.flush()
     queue_url = os.environ["NOTIFICATION_QUEUE_URL"]
     messages = list(
         session.scalars(
