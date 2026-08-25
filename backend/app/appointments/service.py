@@ -9,14 +9,21 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.appointments.models import Appointment, PatientDependent
+from app.appointments.models import Appointment, MedicalRecord, PatientDependent
 from app.appointments.schemas import (
     AppointmentCreate,
+    AppointmentDetail,
     AvailabilitySlot,
+    MedicalRecordPut,
     RelativeAppointmentCreate,
 )
+from app.cancellations.models import (
+    AppointmentPolicyAssignment,
+    AppointmentStatusEvent,
+)
 from app.cancellations.service import assign_active_policy
-from app.doctors.models import DoctorProfile, DoctorWorkingDay
+from app.doctors.models import DoctorBlockedSlot, DoctorProfile, DoctorWorkingDay
+from app.payments.models import Payment
 from app.users.models import UserProfile
 
 SLOT_DURATION = timedelta(minutes=30)
@@ -32,13 +39,15 @@ def get_available_slots(
     if session.get(DoctorProfile, doctor_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
 
-    working_day = session.scalar(
-        select(DoctorWorkingDay).where(
-            DoctorWorkingDay.doctor_id == doctor_id,
-            DoctorWorkingDay.work_date == appointment_date,
+    working_days = list(
+        session.scalars(
+            select(DoctorWorkingDay).where(
+                DoctorWorkingDay.doctor_id == doctor_id,
+                DoctorWorkingDay.work_date == appointment_date,
+            )
         )
     )
-    if working_day is None:
+    if not working_days:
         return []
 
     occupied = set(
@@ -50,19 +59,33 @@ def get_available_slots(
             )
         )
     )
-    slots = []
-    now = datetime.now(APP_TIMEZONE)
-    current = datetime.combine(appointment_date, working_day.start_time)
-    finish = datetime.combine(appointment_date, working_day.end_time)
-    while current + SLOT_DURATION <= finish:
-        end = current + SLOT_DURATION
-        is_future = appointment_date > now.date() or current.time() > now.time()
-        if is_future and current.time() not in occupied:
-            slots.append(
-                AvailabilitySlot(start_time=current.time(), end_time=end.time())
+    blocked = list(
+        session.scalars(
+            select(DoctorBlockedSlot).where(
+                DoctorBlockedSlot.doctor_id == doctor_id,
+                DoctorBlockedSlot.block_date == appointment_date,
             )
-        current = end
-    return slots
+        )
+    )
+    slots = {}
+    now = datetime.now(APP_TIMEZONE)
+    for working_day in working_days:
+        current = datetime.combine(appointment_date, working_day.start_time)
+        finish = datetime.combine(appointment_date, working_day.end_time)
+        while current + SLOT_DURATION <= finish:
+            end = current + SLOT_DURATION
+            is_future = appointment_date > now.date() or current.time() > now.time()
+            is_blocked = any(
+                current.time() < item.end_time and end.time() > item.start_time
+                for item in blocked
+            )
+            if is_future and not is_blocked and current.time() not in occupied:
+                slots[current.time()] = AvailabilitySlot(
+                    start_time=current.time(),
+                    end_time=end.time(),
+                )
+            current = end
+    return [slots[key] for key in sorted(slots)]
 
 
 def _national_id_digest(national_id: str, salt: bytes) -> str:
@@ -178,30 +201,214 @@ def create_appointment(
     return appointment
 
 
-def list_patient_appointments(session: Session, subject: str) -> list[Appointment]:
+def list_patient_appointments(
+    session: Session,
+    subject: str,
+    *,
+    appointment_date: date | None,
+    appointment_status: str | None,
+    limit: int,
+    offset: int,
+) -> list[Appointment]:
     statement = (
         select(Appointment)
         .where(Appointment.booker_cognito_sub == subject)
         .order_by(Appointment.appointment_date, Appointment.start_time)
+        .limit(limit)
+        .offset(offset)
     )
+    if appointment_date is not None:
+        statement = statement.where(Appointment.appointment_date == appointment_date)
+    if appointment_status is not None:
+        statement = statement.where(Appointment.status == appointment_status)
     return list(session.scalars(statement))
 
 
-def list_doctor_appointments(
-    session: Session,
-    subject: str,
-    appointment_date: date | None,
-) -> list[Appointment]:
+def _doctor_by_subject(session: Session, subject: str) -> DoctorProfile:
     doctor = session.scalar(
         select(DoctorProfile).where(DoctorProfile.cognito_sub == subject)
     )
     if doctor is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Complete doctor profile first")
-    statement = select(Appointment).where(Appointment.doctor_id == doctor.id)
+    return doctor
+
+
+def list_doctor_appointments(
+    session: Session,
+    subject: str,
+    *,
+    appointment_date: date | None,
+    appointment_status: str | None,
+    limit: int,
+    offset: int,
+) -> list[Appointment]:
+    doctor = _doctor_by_subject(session, subject)
+    statement = (
+        select(Appointment)
+        .where(Appointment.doctor_id == doctor.id)
+        .order_by(Appointment.appointment_date, Appointment.start_time)
+        .limit(limit)
+        .offset(offset)
+    )
     if appointment_date is not None:
         statement = statement.where(Appointment.appointment_date == appointment_date)
-    return list(
+    if appointment_status is not None:
+        statement = statement.where(Appointment.status == appointment_status)
+    return list(session.scalars(statement))
+
+
+def get_appointment(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+    groups: frozenset[str],
+) -> Appointment:
+    appointment = session.get(Appointment, appointment_id)
+    if "patient" in groups and appointment is not None:
+        if appointment.booker_cognito_sub == subject:
+            return appointment
+    elif "doctor" in groups and appointment is not None:
+        doctor = _doctor_by_subject(session, subject)
+        if appointment.doctor_id == doctor.id:
+            return appointment
+    elif not groups & {"patient", "doctor"}:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Patient or doctor role required"
+        )
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
+
+
+def get_appointment_detail(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+    groups: frozenset[str],
+) -> AppointmentDetail:
+    appointment = get_appointment(session, appointment_id, subject, groups)
+    doctor = session.get(DoctorProfile, appointment.doctor_id)
+    payment = session.scalar(
+        select(Payment).where(Payment.appointment_id == appointment.id)
+    )
+    history = list(
         session.scalars(
-            statement.order_by(Appointment.appointment_date, Appointment.start_time)
+            select(AppointmentStatusEvent)
+            .where(AppointmentStatusEvent.appointment_id == appointment.id)
+            .order_by(AppointmentStatusEvent.created_at)
         )
     )
+    return AppointmentDetail.model_validate(
+        {
+            **appointment.__dict__,
+            "doctor_name": doctor.display_name,
+            "specialty_name": doctor.specialty.name,
+            "facility_name": doctor.facility.name if doctor.facility else None,
+            "payment_status": payment.status if payment else None,
+            "status_history": history,
+        }
+    )
+
+
+def put_medical_record(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+    data: MedicalRecordPut,
+) -> MedicalRecord:
+    doctor = _doctor_by_subject(session, subject)
+    appointment = session.get(Appointment, appointment_id)
+    if appointment is None or appointment.doctor_id != doctor.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
+    if appointment.status not in {"confirmed", "completed"}:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Medical record requires a confirmed or completed appointment",
+        )
+    record = session.scalar(
+        select(MedicalRecord).where(MedicalRecord.appointment_id == appointment.id)
+    )
+    if record is None:
+        record = MedicalRecord(
+            appointment_id=appointment.id,
+            doctor_id=doctor.id,
+            patient_cognito_sub=appointment.booker_cognito_sub,
+            **data.model_dump(),
+        )
+        session.add(record)
+    else:
+        for field, value in data.model_dump().items():
+            setattr(record, field, value)
+    session.commit()
+    session.refresh(record)
+    return record
+
+
+def get_medical_record(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+    groups: frozenset[str],
+) -> MedicalRecord:
+    get_appointment(session, appointment_id, subject, groups)
+    record = session.scalar(
+        select(MedicalRecord).where(MedicalRecord.appointment_id == appointment_id)
+    )
+    if record is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Medical record not found")
+    return record
+
+
+def complete_appointment(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+) -> Appointment:
+    doctor = _doctor_by_subject(session, subject)
+    appointment = session.scalar(
+        select(Appointment).where(Appointment.id == appointment_id).with_for_update()
+    )
+    if appointment is None or appointment.doctor_id != doctor.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
+    if appointment.status == "completed":
+        return appointment
+    if appointment.status != "confirmed":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Cannot complete appointment with status {appointment.status}",
+        )
+
+    appointment_end = datetime.combine(
+        appointment.appointment_date,
+        appointment.end_time,
+        tzinfo=APP_TIMEZONE,
+    )
+    now = datetime.now(APP_TIMEZONE)
+    if now < appointment_end:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Appointment cannot be completed before its scheduled end",
+        )
+
+    assignment = session.get(AppointmentPolicyAssignment, appointment.id)
+    if assignment is None:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Appointment policy assignment is missing",
+        )
+    session.add(
+        AppointmentStatusEvent(
+            appointment_id=appointment.id,
+            from_status=appointment.status,
+            to_status="completed",
+            actor_sub=subject,
+            actor_role="doctor",
+            reason="Appointment completed",
+            policy_id=assignment.policy_id,
+            minutes_before=int((appointment_end - now).total_seconds() // 60),
+            refund_percentage=0,
+            refund_status="not_applicable",
+        )
+    )
+    appointment.status = "completed"
+    session.commit()
+    session.refresh(appointment)
+    return appointment
