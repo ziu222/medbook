@@ -147,9 +147,13 @@ def test_patient_cutoff_doctor_override_and_outbox() -> None:
         with Session(engine) as session:
             assert len(list(session.scalars(select(AppointmentStatusEvent)))) == 2
             outboxes = list(session.scalars(select(NotificationOutbox)))
-            assert len(outboxes) == 2
+            assert len(outboxes) == 4
             assert "Thông tin nhạy cảm" not in outboxes[0].payload
             assert "booker_sub" in json.loads(outboxes[0].payload)
+            assert {item.event_type for item in outboxes} == {
+                "appointment_booked",
+                "appointment_cancelled",
+            }
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
