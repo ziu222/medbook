@@ -38,6 +38,10 @@ resource "aws_cognito_user_pool" "this" {
     allow_admin_create_user_only = false
   }
 
+  lambda_config {
+    post_confirmation = aws_lambda_function.post_confirmation.arn
+  }
+
   tags = merge(var.tags, {
     Module = "cognito"
     Name   = "user-pool"
@@ -78,4 +82,75 @@ resource "aws_cognito_user_group" "roles" {
 
   name         = each.value
   user_pool_id = aws_cognito_user_pool.this.id
+}
+
+# Self-service signup has no role picker, so every self-registered account defaults to
+# "patient" — without this, new users have no application role and every role-gated
+# endpoint (booking, appointments, payments) 403s them.
+data "aws_iam_policy_document" "post_confirmation_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "post_confirmation" {
+  name               = "${var.name}-post-confirmation"
+  assume_role_policy = data.aws_iam_policy_document.post_confirmation_assume.json
+
+  tags = merge(var.tags, {
+    Module = "cognito"
+    Name   = "post-confirmation"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "post_confirmation_basic" {
+  role       = aws_iam_role.post_confirmation.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+data "aws_iam_policy_document" "post_confirmation_cognito" {
+  statement {
+    actions   = ["cognito-idp:AdminAddUserToGroup"]
+    resources = [aws_cognito_user_pool.this.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "post_confirmation_cognito" {
+  name   = "${var.name}-post-confirmation-cognito"
+  role   = aws_iam_role.post_confirmation.id
+  policy = data.aws_iam_policy_document.post_confirmation_cognito.json
+}
+
+data "archive_file" "post_confirmation" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/post_confirmation.py"
+  output_path = "${path.module}/post_confirmation.zip"
+}
+
+resource "aws_lambda_function" "post_confirmation" {
+  function_name    = "${var.name}-post-confirmation"
+  role             = aws_iam_role.post_confirmation.arn
+  handler          = "post_confirmation.handler"
+  runtime          = "python3.13"
+  filename         = data.archive_file.post_confirmation.output_path
+  source_code_hash = data.archive_file.post_confirmation.output_base64sha256
+  timeout          = 10
+
+  tags = merge(var.tags, {
+    Module = "cognito"
+    Name   = "post-confirmation"
+  })
+}
+
+resource "aws_lambda_permission" "post_confirmation_cognito_invoke" {
+  statement_id  = "AllowCognitoInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.post_confirmation.function_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.this.arn
 }
