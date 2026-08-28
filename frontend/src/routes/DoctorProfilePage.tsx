@@ -235,8 +235,8 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
         startTime: selectedSlot.start_time,
         symptoms: symptoms.trim(),
       });
-      const payment = await startPayment(appointment.id);
-      window.location.assign(payment.checkout_url);
+      await startPayment(appointment.id);
+      onNavigate('appointments');
     } catch (err) {
       // The API rejects booking until the account has a profile row. Say so in Vietnamese and
       // point at the page that fixes it, instead of surfacing the raw backend string.
