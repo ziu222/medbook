@@ -42,9 +42,10 @@ export interface AppointmentRead {
 
 export interface PaymentRead {
   appointment_id: number;
+  provider: string;
   amount_vnd: number;
   status: string;
-  checkout_url: string;
+  expires_at: string;
 }
 
 /** Carries the HTTP status so callers can tell "no profile yet" (404) from a real failure. */

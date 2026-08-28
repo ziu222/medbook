@@ -40,11 +40,13 @@ function AppointmentCard({
   doctor,
   delayMs,
   onSelectDoctor,
+  onPaid,
 }: {
   appointment: AppointmentRead;
   doctor: DoctorSummary | undefined;
   delayMs: number;
   onSelectDoctor: (id: number) => void;
+  onPaid: (appointmentId: number) => void;
 }) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +56,10 @@ function AppointmentCard({
     setPaying(true);
     setError(null);
     try {
-      const payment = await startPayment(appointment.id);
-      window.location.assign(payment.checkout_url);
+      await startPayment(appointment.id);
+      onPaid(appointment.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được liên kết thanh toán.');
+      setError(err instanceof Error ? err.message : 'Thanh toán thất bại, vui lòng thử lại.');
       setPaying(false);
     }
   };
@@ -137,7 +139,7 @@ function AppointmentCard({
             cursor: paying ? 'not-allowed' : 'pointer',
           }}
         >
-          {paying ? 'Đang chuyển tới VNPAY...' : 'Thanh toán ngay'}
+          {paying ? 'Đang xử lý...' : 'Thanh toán ngay'}
         </div>
       )}
     </div>
@@ -177,6 +179,10 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
   // regardless of date.
   const isUpcoming = (a: AppointmentRead) => a.status === 'pending' || a.status === 'confirmed';
   const byDate = (a: AppointmentRead, b: AppointmentRead) => `${a.appointment_date}${a.start_time}`.localeCompare(`${b.appointment_date}${b.start_time}`);
+
+  const handlePaid = (appointmentId: number) => {
+    setAppointments((prev) => prev.map((a) => (a.id === appointmentId ? { ...a, status: 'confirmed' } : a)));
+  };
 
   const upcoming = appointments.filter(isUpcoming).sort(byDate);
   const past = appointments.filter((a) => !isUpcoming(a)).sort((a, b) => byDate(b, a));
@@ -252,6 +258,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       doctor={doctorsById.get(a.doctor_id)}
                       delayMs={Math.min(i * 40, 320)}
                       onSelectDoctor={onSelectDoctor}
+                      onPaid={handlePaid}
                     />
                   ))}
                 </Section>
@@ -265,6 +272,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       doctor={doctorsById.get(a.doctor_id)}
                       delayMs={Math.min(i * 40, 320)}
                       onSelectDoctor={onSelectDoctor}
+                      onPaid={handlePaid}
                     />
                   ))}
                 </Section>
