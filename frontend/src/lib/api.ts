@@ -6,10 +6,21 @@ export interface Specialty {
   slug: string;
 }
 
+export interface Facility {
+  id: number;
+  name: string;
+  address: string;
+  phone_number: string | null;
+  rating: number;
+}
+
+export const fetchFacilities = (opts: { limit?: number } = {}) => get<Facility[]>(`/api/facilities?limit=${opts.limit ?? 50}`);
+
 export interface DoctorSummary {
   id: number;
   display_name: string;
   specialty: Specialty;
+  facility: Facility | null;
   clinic_name: string | null;
   years_experience: number;
   rating: number;
@@ -108,6 +119,20 @@ export async function fetchMyDoctorProfile(): Promise<DoctorDetail | null> {
     throw err;
   }
 }
+
+export interface DoctorProfileInput {
+  specialty_id: number;
+  facility_id: number | null;
+  display_name: string;
+  bio: string | null;
+  clinic_name: string | null;
+  years_experience: number;
+  consultation_fee_vnd: number | null;
+  avatar_url: string | null;
+}
+
+/** Also creates the profile row on first save — the backend PUT upserts. */
+export const saveMyDoctorProfile = (input: DoctorProfileInput) => put<DoctorDetail>('/api/doctor/me', input);
 
 export const fetchAvailability = (doctorId: number, date: string) =>
   get<AvailabilitySlot[]>(`/api/doctors/${doctorId}/availability?date=${date}`);
