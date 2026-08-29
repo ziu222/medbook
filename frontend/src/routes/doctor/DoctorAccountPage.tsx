@@ -49,7 +49,7 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
   const canSave = displayName.trim().length > 0 && specialtyId !== '' && !saving;
 
   const handleSave = async () => {
-    if (!canSave || specialtyId === '') return;
+    if (!canSave) return;
     setSaving(true);
     setError(null);
     setSaved(false);

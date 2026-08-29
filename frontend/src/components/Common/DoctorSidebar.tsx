@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactElement } from 'react';
 import { logout } from '../../lib/auth';
 import type { DoctorNavKey } from '../../lib/doctorRoutes';
 
@@ -38,7 +38,7 @@ const profileIcon = (
   </svg>
 );
 
-const NAV_ITEMS: { key: DoctorNavKey; label: string; icon: JSX.Element }[] = [
+const NAV_ITEMS: { key: DoctorNavKey; label: string; icon: ReactElement }[] = [
   { key: 'overview', label: 'Tổng quan', icon: overviewIcon },
   { key: 'schedule', label: 'Lịch làm việc', icon: scheduleIcon },
   { key: 'appointments', label: 'Cuộc hẹn', icon: appointmentsIcon },
