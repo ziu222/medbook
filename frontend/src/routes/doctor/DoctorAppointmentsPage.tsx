@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DoctorShell } from '../../components/Common/DoctorShell';
 import { LoadingSpinner } from '../../components/Common/LoadingSpinner';
+import { Modal } from '../../components/Common/Modal';
 import {
   ApiError,
   cancelDoctorAppointment,
@@ -32,18 +33,60 @@ const FILTERS: { key: string; label: string }[] = [
 
 const DATE_FORMAT = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+function CancelModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: (reason: string) => void }) {
+  const [reason, setReason] = useState('');
+  const trimmed = reason.trim();
+
+  return (
+    <Modal open={open} title="Hủy lịch hẹn" onClose={onClose}>
+      <div style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '14px' }}>Cho bệnh nhân biết lý do bạn hủy lịch hẹn này.</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+        <label style={{ fontWeight: 700, fontSize: '13.5px' }}>Lý do hủy</label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          maxLength={500}
+          placeholder="Vd: bác sĩ có lịch cấp cứu đột xuất..."
+          style={{ padding: '11px 14px', borderRadius: '11px', border: '1px solid var(--line)', fontSize: '14px', resize: 'vertical', outline: 'none' }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <span onClick={onClose} className="link-hover" style={{ padding: '11px 18px', borderRadius: '11px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', color: 'var(--ink2)' }}>
+          Đóng
+        </span>
+        <span
+          onClick={() => trimmed && onConfirm(trimmed)}
+          className={trimmed ? 'btn-hover' : undefined}
+          style={{
+            padding: '11px 20px',
+            borderRadius: '11px',
+            fontWeight: 700,
+            fontSize: '14px',
+            cursor: trimmed ? 'pointer' : 'not-allowed',
+            background: trimmed ? '#c0492f' : 'var(--line)',
+            color: trimmed ? '#fff' : 'var(--faint)',
+          }}
+        >
+          Xác nhận hủy
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
 function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRead; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const status = STATUS_META[appointment.status] ?? { label: appointment.status, color: 'var(--muted)', bg: 'var(--tint2)' };
 
-  const handleCancel = async () => {
-    const reason = window.prompt('Lý do hủy lịch hẹn:');
-    if (!reason || !reason.trim()) return;
+  const handleCancel = async (reason: string) => {
+    setShowCancelModal(false);
     setBusy(true);
     setError(null);
     try {
-      await cancelDoctorAppointment(appointment.id, reason.trim());
+      await cancelDoctorAppointment(appointment.id, reason);
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Hủy lịch thất bại.');
@@ -67,6 +110,7 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
   const canComplete = appointment.status === 'confirmed';
 
   return (
+    <>
     <tr style={{ borderTop: '1px solid var(--line)' }}>
       <td style={{ padding: '13px 10px', fontWeight: 700 }}>{appointment.patient_full_name}</td>
       <td style={{ padding: '13px 10px' }}>
@@ -92,7 +136,7 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
           )}
           {canCancel && (
             <span
-              onClick={busy ? undefined : handleCancel}
+              onClick={busy ? undefined : () => setShowCancelModal(true)}
               className={busy ? undefined : 'link-hover'}
               style={{ fontWeight: 700, fontSize: '13.5px', color: '#c0492f', cursor: busy ? 'not-allowed' : 'pointer' }}
             >
@@ -102,6 +146,8 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
         </div>
       </td>
     </tr>
+    <CancelModal open={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={handleCancel} />
+    </>
   );
 }
 
