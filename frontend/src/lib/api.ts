@@ -130,6 +130,12 @@ export function fetchDoctorAppointments(opts: { date?: string; status?: string; 
   return get<AppointmentRead[]>(`/api/doctor/appointments?${params}`);
 }
 
+export const cancelDoctorAppointment = (appointmentId: number, reason: string) =>
+  post<unknown>(`/api/doctor/appointments/${appointmentId}/cancel`, { reason });
+
+export const completeAppointment = (appointmentId: number) =>
+  post<AppointmentRead>(`/api/doctor/appointments/${appointmentId}/complete`, {});
+
 export interface UserProfile {
   cognito_sub: string;
   display_name: string;
