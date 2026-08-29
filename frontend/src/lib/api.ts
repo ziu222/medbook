@@ -142,3 +142,32 @@ export async function fetchMyProfile(): Promise<UserProfile | null> {
 }
 
 export const saveMyProfile = (input: UserProfileInput) => put<UserProfile>('/api/users/me', input);
+
+export interface SymptomClassification {
+  urgent: boolean;
+  specialty_id: number | null;
+  specialty_name: string | null;
+  reason: string;
+  emergency_message: string | null;
+}
+
+export interface DoctorRecommendation {
+  doctor_id: number;
+  doctor_name: string;
+  specialty_name: string;
+  facility_name: string | null;
+  rating: number;
+  available_slots: string[];
+  factors: string[];
+}
+
+export interface RecommendationRead {
+  classification: SymptomClassification;
+  doctors: DoctorRecommendation[];
+}
+
+export const recommendDoctors = (description: string, appointmentDate: string) =>
+  post<RecommendationRead>('/api/recommendations/doctors', {
+    description,
+    appointment_date: appointmentDate,
+  });

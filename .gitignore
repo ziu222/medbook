@@ -16,6 +16,8 @@ Thumbs.db
 .env
 .env.local
 *.local
+*.env
+infra/.cf_token.env
 
 # agent / local scratch
 .agents/
