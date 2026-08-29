@@ -80,6 +80,15 @@ async function send<T>(method: 'POST' | 'PUT', path: string, body: unknown): Pro
 const post = <T>(path: string, body: unknown) => send<T>('POST', path, body);
 const put = <T>(path: string, body: unknown) => send<T>('PUT', path, body);
 
+async function del(path: string): Promise<void> {
+  const token = getAccessToken();
+  const res = await fetch(path, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new ApiError(res.status, detail?.detail ?? `${path} -> ${res.status}`);
+  }
+}
+
 export const fetchSpecialties = () => get<Specialty[]>('/api/specialties');
 
 export function fetchDoctors(opts: { limit?: number; specialtyId?: number } = {}) {
@@ -194,3 +203,34 @@ export const recommendDoctors = (description: string, appointmentDate: string) =
     description,
     appointment_date: appointmentDate,
   });
+
+export interface WorkingDay {
+  id: number;
+  work_date: string;
+  start_time: string;
+  end_time: string;
+}
+
+export const fetchWorkingDays = (dateFrom: string, dateTo: string) =>
+  get<WorkingDay[]>(`/api/doctor/schedules?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const addWorkingInterval = (workDate: string, startTime: string, endTime: string) =>
+  post<WorkingDay>(`/api/doctor/schedules/${workDate}`, { start_time: startTime, end_time: endTime });
+
+export const closeWorkingDay = (workDate: string) => del(`/api/doctor/schedules/${workDate}`);
+
+export interface BlockedSlot {
+  id: number;
+  block_date: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+}
+
+export const fetchBlockedSlots = (dateFrom: string, dateTo: string) =>
+  get<BlockedSlot[]>(`/api/doctor/blocked-slots?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const addBlockedSlot = (blockDate: string, startTime: string, endTime: string, reason: string) =>
+  post<BlockedSlot>('/api/doctor/blocked-slots', { block_date: blockDate, start_time: startTime, end_time: endTime, reason: reason || null });
+
+export const deleteBlockedSlot = (id: number) => del(`/api/doctor/blocked-slots/${id}`);
