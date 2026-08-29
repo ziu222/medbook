@@ -106,11 +106,17 @@ export function getAccessToken(): string | null {
 
 export const isAuthenticated = (): boolean => getAccessToken() !== null;
 
+interface IdTokenClaims {
+  email?: string;
+  name?: string;
+  'cognito:groups'?: string[];
+}
+
 /**
  * Claims off the stored ID token. Read-only display only — the backend verifies its own copy,
  * so nothing here is trusted for authorisation. Email lives here rather than in user_profiles.
  */
-export function getIdTokenClaims(): { email?: string; name?: string } | null {
+export function getIdTokenClaims(): IdTokenClaims | null {
   const raw = sessionStorage.getItem(TOKENS_KEY);
   if (!raw) return null;
   try {
@@ -123,6 +129,14 @@ export function getIdTokenClaims(): { email?: string; name?: string } | null {
   } catch {
     return null;
   }
+}
+
+export type UserRole = 'patient' | 'doctor' | 'admin';
+
+/** Display-only, like getIdTokenClaims — the backend re-checks the role on every request. */
+export function getUserRole(): UserRole | null {
+  const groups = getIdTokenClaims()?.['cognito:groups'] ?? [];
+  return (['doctor', 'admin', 'patient'] as const).find((role) => groups.includes(role)) ?? null;
 }
 
 export function logout(): void {
