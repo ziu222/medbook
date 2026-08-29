@@ -123,6 +123,13 @@ export const startPayment = (appointmentId: number) => post<PaymentRead>(`/api/a
 
 export const fetchMyAppointments = () => get<AppointmentRead[]>('/api/appointments/me');
 
+export function fetchDoctorAppointments(opts: { date?: string; status?: string; limit?: number } = {}) {
+  const params = new URLSearchParams({ limit: String(opts.limit ?? 20) });
+  if (opts.date) params.set('date', opts.date);
+  if (opts.status) params.set('status', opts.status);
+  return get<AppointmentRead[]>(`/api/doctor/appointments?${params}`);
+}
+
 export interface UserProfile {
   cognito_sub: string;
   display_name: string;
