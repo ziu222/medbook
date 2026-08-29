@@ -90,6 +90,16 @@ export function fetchDoctors(opts: { limit?: number; specialtyId?: number } = {}
 
 export const fetchDoctor = (id: number) => get<DoctorDetail>(`/api/doctors/${id}`);
 
+/** Resolves to null when the doctor account has no profile row yet (backend answers 404). */
+export async function fetchMyDoctorProfile(): Promise<DoctorDetail | null> {
+  try {
+    return await get<DoctorDetail>('/api/doctor/me');
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export const fetchAvailability = (doctorId: number, date: string) =>
   get<AvailabilitySlot[]>(`/api/doctors/${doctorId}/availability?date=${date}`);
 

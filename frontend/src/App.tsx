@@ -9,9 +9,14 @@ import { SpecialtiesPage } from './routes/SpecialtiesPage';
 import { SpecialtyDetailPage } from './routes/SpecialtyDetailPage';
 import { AiAssistantPage } from './routes/AiAssistantPage';
 import { NotFoundPage } from './routes/NotFoundPage';
+import { DoctorOverviewPage } from './routes/doctor/DoctorOverviewPage';
+import { DoctorSchedulePage } from './routes/doctor/DoctorSchedulePage';
+import { DoctorAppointmentsPage } from './routes/doctor/DoctorAppointmentsPage';
+import { DoctorAccountPage } from './routes/doctor/DoctorAccountPage';
 import { ScrollToTop } from './components/Common/ScrollToTop';
-import { handleAuthCallback, isAuthenticated } from './lib/auth';
+import { getUserRole, handleAuthCallback, isAuthenticated } from './lib/auth';
 import { PATHS, doctorPath, pathForNavKey, specialtyPath } from './lib/routes';
+import { DOCTOR_PATHS, doctorPathForNavKey } from './lib/doctorRoutes';
 
 function PatientProfile({ authed }: { authed: boolean }) {
   const navigate = useNavigate();
@@ -74,6 +79,26 @@ function AiAssistant({ authed }: { authed: boolean }) {
   return <AiAssistantPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />;
 }
 
+function DoctorOverview({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <DoctorOverviewPage authed={authed} onNavigate={(key) => navigate(doctorPathForNavKey(key))} />;
+}
+
+function DoctorSchedule({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <DoctorSchedulePage authed={authed} onNavigate={(key) => navigate(doctorPathForNavKey(key))} />;
+}
+
+function DoctorAppointments({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <DoctorAppointmentsPage authed={authed} onNavigate={(key) => navigate(doctorPathForNavKey(key))} />;
+}
+
+function DoctorAccount({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <DoctorAccountPage authed={authed} onNavigate={(key) => navigate(doctorPathForNavKey(key))} />;
+}
+
 function App() {
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
   const [authed, setAuthed] = useState(isAuthenticated());
@@ -84,7 +109,8 @@ function App() {
       .catch((err) => console.error('Đăng nhập thất bại:', err))
       .finally(() => {
         setAuthed(isAuthenticated());
-        window.history.replaceState({}, '', PATHS.home);
+        const landingPath = getUserRole() === 'doctor' ? DOCTOR_PATHS.overview : PATHS.home;
+        window.history.replaceState({}, '', landingPath);
         setOnCallback(false);
       });
   }, [onCallback]);
@@ -103,6 +129,10 @@ function App() {
         <Route path={PATHS.ai} element={<AiAssistant authed={authed} />} />
         <Route path={PATHS.appointments} element={<MyAppointments authed={authed} />} />
         <Route path={PATHS.profile} element={<PatientProfile authed={authed} />} />
+        <Route path={DOCTOR_PATHS.overview} element={<DoctorOverview authed={authed} />} />
+        <Route path={DOCTOR_PATHS.schedule} element={<DoctorSchedule authed={authed} />} />
+        <Route path={DOCTOR_PATHS.appointments} element={<DoctorAppointments authed={authed} />} />
+        <Route path={DOCTOR_PATHS.profile} element={<DoctorAccount authed={authed} />} />
         <Route path="*" element={<NotFoundPage authed={authed} />} />
       </Routes>
     </>
