@@ -9,6 +9,7 @@ export const PATHS = {
   home: '/',
   find: '/tim-bac-si',
   specialties: '/chuyen-khoa',
+  ai: '/tro-ly-ai',
   appointments: '/lich-hen',
   profile: '/ho-so',
 } as const satisfies Partial<Record<NavKey, string>>;
@@ -16,7 +17,6 @@ export const PATHS = {
 export const doctorPath = (id: number) => `/bac-si/${id}`;
 export const specialtyPath = (slug: string) => `/chuyen-khoa/${slug}`;
 
-/** 'ai' has no screen yet, so it stays on the homepage rather than routing nowhere. */
 export function pathForNavKey(key: NavKey): string {
   return key in PATHS ? PATHS[key as keyof typeof PATHS] : PATHS.home;
 }

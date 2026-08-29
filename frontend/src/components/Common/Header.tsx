@@ -7,7 +7,7 @@ interface HeaderProps {
   /** Which nav item is highlighted as current. Pages not built yet just pass 'home'. */
   active?: NavKey;
   authed?: boolean;
-  /** 'ai' is still a no-op. 'appointments' and 'profile' only show once authed. */
+  /** 'appointments' and 'profile' only show once authed. */
   onNavigate?: (key: NavKey) => void;
 }
 

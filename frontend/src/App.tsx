@@ -7,6 +7,7 @@ import { MyAppointmentsPage } from './routes/MyAppointmentsPage';
 import { PatientProfilePage } from './routes/PatientProfilePage';
 import { SpecialtiesPage } from './routes/SpecialtiesPage';
 import { SpecialtyDetailPage } from './routes/SpecialtyDetailPage';
+import { AiAssistantPage } from './routes/AiAssistantPage';
 import { NotFoundPage } from './routes/NotFoundPage';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { handleAuthCallback, isAuthenticated } from './lib/auth';
@@ -68,6 +69,11 @@ function Home({ authed }: { authed: boolean }) {
   return <HomePage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
 }
 
+function AiAssistant({ authed }: { authed: boolean }) {
+  const navigate = useNavigate();
+  return <AiAssistantPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />;
+}
+
 function App() {
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
   const [authed, setAuthed] = useState(isAuthenticated());
@@ -94,6 +100,7 @@ function App() {
         <Route path="/bac-si/:id" element={<DoctorProfile authed={authed} />} />
         <Route path={PATHS.specialties} element={<Specialties authed={authed} />} />
         <Route path="/chuyen-khoa/:slug" element={<SpecialtyDetail authed={authed} />} />
+        <Route path={PATHS.ai} element={<AiAssistant authed={authed} />} />
         <Route path={PATHS.appointments} element={<MyAppointments authed={authed} />} />
         <Route path={PATHS.profile} element={<PatientProfile authed={authed} />} />
         <Route path="*" element={<NotFoundPage authed={authed} />} />

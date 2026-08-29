@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { ApiError, bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
+import { toIsoDate } from '../lib/date';
 import { doctorReviewCount, doctorReviews } from '../lib/mockContent';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
 
@@ -24,10 +25,6 @@ function upcomingDates(count: number): Date[] {
     d.setDate(d.getDate() + i + 1);
     return d;
   });
-}
-
-function toIsoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const starIcon = (
