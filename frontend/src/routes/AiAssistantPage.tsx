@@ -2,20 +2,18 @@ import { useState } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
-import { recommendDoctors, type DoctorRecommendation, type RecommendationRead } from '../lib/api';
+import { ApiError, sendChatMessage } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
-import { avatarColorFor, initialsFor } from '../lib/avatar';
-import { toIsoDate } from '../lib/date';
 
 interface AiAssistantPageProps {
   authed: boolean;
   onNavigate: (key: NavKey) => void;
-  onSelectDoctor: (id: number) => void;
 }
 
 interface Message {
   role: 'user' | 'ai';
   text: string;
+  toolsUsed?: string[];
 }
 
 const sendIcon = (
@@ -25,104 +23,38 @@ const sendIcon = (
   </svg>
 );
 
-const starIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)">
-    <path d="m12 3 2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.9 6.9 18.8 8 13 3.7 9l5.8-.7Z" />
-  </svg>
-);
+const TOOL_LABELS: Record<string, string> = {
+  search_doctors: 'Tìm bác sĩ',
+  get_doctor_schedule: 'Xem lịch trống',
+  get_my_appointments: 'Xem lịch hẹn của bạn',
+};
 
-function aiReplyFor(result: RecommendationRead): string {
-  const { classification } = result;
-  if (classification.urgent) return classification.emergency_message ?? 'Triệu chứng này cần được cấp cứu ngay.';
-  const specialty = classification.specialty_name ?? 'phù hợp';
-  return `Dựa trên mô tả, bạn nên khám chuyên khoa ${specialty}. ${classification.reason}`;
-}
-
-function DoctorRecommendationCard({ doctor, onSelectDoctor }: { doctor: DoctorRecommendation; onSelectDoctor: (id: number) => void }) {
-  const firstSlot = doctor.available_slots[0];
-  return (
-    <div
-      onClick={() => onSelectDoctor(doctor.doctor_id)}
-      className="card-hover"
-      style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '16px', padding: '16px', cursor: 'pointer' }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div
-          style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '13px',
-            background: avatarColorFor(doctor.doctor_id),
-            color: '#fff',
-            display: 'grid',
-            placeItems: 'center',
-            fontWeight: 800,
-            fontSize: '15px',
-            flexShrink: 0,
-          }}
-        >
-          {initialsFor(doctor.doctor_name)}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: '15px' }}>{doctor.doctor_name}</div>
-          <div style={{ color: 'var(--muted)', fontSize: '13.5px' }}>
-            {doctor.specialty_name}
-            {doctor.facility_name ? ` · ${doctor.facility_name}` : ''}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '13.5px', color: 'var(--ink2)' }}>
-        {starIcon}
-        <b style={{ color: 'var(--ink)' }}>{doctor.rating.toFixed(1)}</b>
-        {firstSlot && (
-          <span
-            style={{
-              marginLeft: 'auto',
-              padding: '4px 10px',
-              borderRadius: '999px',
-              background: 'var(--tint)',
-              color: 'var(--brand-d)',
-              fontWeight: 700,
-              fontSize: '12.5px',
-            }}
-          >
-            Trống {firstSlot.slice(0, 5)} hôm nay
-          </span>
-        )}
-      </div>
-      {doctor.factors.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-          {doctor.factors.map((f) => (
-            <span key={f} style={{ padding: '4px 9px', borderRadius: '999px', background: 'var(--tint2)', color: 'var(--muted)', fontSize: '12px' }}>
-              {f}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function AiAssistantPage({ authed, onNavigate, onSelectDoctor }: AiAssistantPageProps) {
+export function AiAssistantPage({ authed, onNavigate }: AiAssistantPageProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', text: 'Chào bạn 👋 Mình là trợ lý AI của MedBook. Bạn có thể mô tả triệu chứng đang gặp để mình gợi ý đúng chuyên khoa nhé.' },
+    {
+      role: 'ai',
+      text: 'Chào bạn 👋 Mình là trợ lý AI của MedBook. Bạn có thể hỏi mình về triệu chứng, tìm bác sĩ theo chuyên khoa, xem lịch trống hoặc lịch hẹn của bạn.',
+    },
   ]);
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<RecommendationRead | null>(null);
 
   const handleSubmit = async () => {
-    const description = input.trim();
-    if (!description || submitting) return;
-    setMessages((prev) => [...prev, { role: 'user', text: description }]);
+    const message = input.trim();
+    if (!message || submitting) return;
+    setMessages((prev) => [...prev, { role: 'user', text: message }]);
     setInput('');
     setSubmitting(true);
     try {
-      const data = await recommendDoctors(description, toIsoDate(new Date()));
-      setResult(data);
-      setMessages((prev) => [...prev, { role: 'ai', text: aiReplyFor(data) }]);
-    } catch {
-      setMessages((prev) => [...prev, { role: 'ai', text: 'Xin lỗi, mình chưa xử lý được yêu cầu này. Bạn thử mô tả lại nhé.' }]);
+      const data = await sendChatMessage(message);
+      setMessages((prev) => [...prev, { role: 'ai', text: data.reply, toolsUsed: data.tools_used }]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        redirectToLogin();
+        return;
+      }
+      const text = err instanceof ApiError ? err.message : 'Xin lỗi, mình chưa xử lý được yêu cầu này. Bạn thử mô tả lại nhé.';
+      setMessages((prev) => [...prev, { role: 'ai', text }]);
     } finally {
       setSubmitting(false);
     }
@@ -164,20 +96,30 @@ export function AiAssistantPage({ authed, onNavigate, onSelectDoctor }: AiAssist
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      maxWidth: '80%',
-                      padding: '12px 16px',
-                      borderRadius: '16px',
-                      background: m.role === 'user' ? 'var(--brand-grad)' : 'var(--tint2)',
-                      color: m.role === 'user' ? '#fff' : 'var(--ink)',
-                      fontSize: '14.5px',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {m.text}
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', gap: '4px' }}>
+                    <div
+                      style={{
+                        maxWidth: '80%',
+                        padding: '12px 16px',
+                        borderRadius: '16px',
+                        background: m.role === 'user' ? 'var(--brand-grad)' : 'var(--tint2)',
+                        color: m.role === 'user' ? '#fff' : 'var(--ink)',
+                        fontSize: '14.5px',
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {m.text}
+                    </div>
+                    {m.toolsUsed && m.toolsUsed.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {m.toolsUsed.map((t) => (
+                          <span key={t} style={{ padding: '3px 9px', borderRadius: '999px', background: 'var(--tint)', color: 'var(--brand-d)', fontSize: '11.5px', fontWeight: 700 }}>
+                            {TOOL_LABELS[t] ?? t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {submitting && (
@@ -192,7 +134,7 @@ export function AiAssistantPage({ authed, onNavigate, onSelectDoctor }: AiAssist
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder="Mô tả triệu chứng của bạn..."
+                  placeholder="Nhắn tin cho trợ lý AI..."
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -221,41 +163,16 @@ export function AiAssistantPage({ authed, onNavigate, onSelectDoctor }: AiAssist
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {result ? (
-                <>
-                  <div
-                    style={{
-                      background: result.classification.urgent ? '#fdeceb' : 'var(--forest)',
-                      color: result.classification.urgent ? '#c0492f' : '#fff',
-                      borderRadius: '18px',
-                      padding: '20px',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '8px' }}>Phân loại nhóm triệu chứng</div>
-                    <div style={{ fontSize: '14px', lineHeight: 1.6 }}>{aiReplyFor(result)}</div>
-                  </div>
-
-                  {!result.classification.urgent && (
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '12px' }}>Bác sĩ được gợi ý</div>
-                      {result.doctors.length === 0 ? (
-                        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Không có bác sĩ trống lịch hôm nay, thử lại vào ngày khác.</div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {result.doctors.map((d) => (
-                            <DoctorRecommendationCard key={d.doctor_id} doctor={d} onSelectDoctor={onSelectDoctor} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 20px' }}>
-                  Mô tả triệu chứng ở khung chat để nhận gợi ý chuyên khoa và bác sĩ phù hợp.
-                </div>
-              )}
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '22px' }}>
+              <div style={{ fontWeight: 800, fontSize: '15px', marginBottom: '14px' }}>Trợ lý có thể giúp bạn</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px', color: 'var(--ink2)' }}>
+                <div>• Định hướng chuyên khoa dựa trên triệu chứng</div>
+                <div>• Tìm bác sĩ theo chuyên khoa và lịch trống</div>
+                <div>• Xem lịch hẹn hiện có của bạn</div>
+              </div>
+              <div style={{ marginTop: '16px', padding: '12px 14px', borderRadius: '12px', background: '#fdf3e2', color: '#96631a', fontSize: '13px', lineHeight: 1.5 }}>
+                Trợ lý không thay thế chẩn đoán y khoa. Nếu có dấu hiệu khẩn cấp, hãy gọi 115 hoặc đến cơ sở cấp cứu gần nhất.
+              </div>
             </div>
           </div>
         )}

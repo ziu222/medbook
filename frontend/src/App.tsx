@@ -76,7 +76,7 @@ function Home({ authed }: { authed: boolean }) {
 
 function AiAssistant({ authed }: { authed: boolean }) {
   const navigate = useNavigate();
-  return <AiAssistantPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} onSelectDoctor={(id) => navigate(doctorPath(id))} />;
+  return <AiAssistantPage authed={authed} onNavigate={(key) => navigate(pathForNavKey(key))} />;
 }
 
 function DoctorOverview({ authed }: { authed: boolean }) {
