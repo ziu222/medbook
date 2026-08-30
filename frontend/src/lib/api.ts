@@ -229,6 +229,14 @@ export const recommendDoctors = (description: string, appointmentDate: string) =
     appointment_date: appointmentDate,
   });
 
+export interface ChatReply {
+  reply: string;
+  tools_used: string[];
+}
+
+/** The actual Gemini-backed chatbot — stateless per call, no server-side conversation memory. */
+export const sendChatMessage = (message: string) => post<ChatReply>('/api/chat', { message });
+
 export interface WorkingDay {
   id: number;
   work_date: string;
