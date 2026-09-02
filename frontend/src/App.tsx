@@ -100,6 +100,7 @@ function DoctorAccount({ authed }: { authed: boolean }) {
 }
 
 function App() {
+  const navigate = useNavigate();
   const [onCallback, setOnCallback] = useState(window.location.pathname === '/auth/callback');
   const [authed, setAuthed] = useState(isAuthenticated());
 
@@ -110,10 +111,10 @@ function App() {
       .finally(() => {
         setAuthed(isAuthenticated());
         const landingPath = getUserRole() === 'doctor' ? DOCTOR_PATHS.overview : PATHS.home;
-        window.history.replaceState({}, '', landingPath);
+        navigate(landingPath, { replace: true });
         setOnCallback(false);
       });
-  }, [onCallback]);
+  }, [onCallback, navigate]);
 
   if (onCallback) return null;
 
