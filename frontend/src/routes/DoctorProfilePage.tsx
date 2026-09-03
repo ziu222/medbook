@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
-import { ApiError, bookAppointment, fetchAvailability, fetchDoctor, startPayment, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
+import { ApiError, bookAppointment, fetchAvailability, fetchDoctor, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
 import { toIsoDate } from '../lib/date';
@@ -226,13 +226,12 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
     setSubmitting(true);
     setError(null);
     try {
-      const appointment = await bookAppointment({
+      await bookAppointment({
         doctorId,
         appointmentDate: toIsoDate(selectedDate),
         startTime: selectedSlot.start_time,
         symptoms: symptoms.trim(),
       });
-      await startPayment(appointment.id);
       onNavigate('appointments');
     } catch (err) {
       // The API rejects booking until the account has a profile row. Say so in Vietnamese and
