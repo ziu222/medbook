@@ -7,10 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.appointments.models import Appointment
-from app.doctors.models import DoctorProfile
 from app.payments.models import Payment, Refund
 
 PAYMENT_TTL = timedelta(minutes=15)
+# Flat platform fee to hold/confirm a slot — separate from and unrelated to whatever the
+# doctor charges in person at the clinic, which the app never handles.
+BOOKING_FEE_VND = 150_000
 
 
 def create_payment(
@@ -34,18 +36,12 @@ def create_payment(
             f"Cannot pay appointment with status {appointment.status}",
         )
 
-    doctor = session.get(DoctorProfile, appointment.doctor_id)
-    if doctor is None or doctor.consultation_fee_vnd is None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Doctor has not configured a consultation fee"
-        )
-
     now = datetime.now(UTC)
     if existing is None:
         payment = Payment(
             appointment_id=appointment.id,
             provider="manual",
-            amount_vnd=doctor.consultation_fee_vnd,
+            amount_vnd=BOOKING_FEE_VND,
             txn_ref=f"MANUAL-{appointment.id}-{secrets.token_hex(4)}",
             status="paid",
             checkout_url="https://medbook.invalid/manual-payment",

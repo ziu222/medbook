@@ -1,6 +1,9 @@
+import os
 from datetime import date
 from decimal import Decimal
 
+import boto3
+from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, joinedload
@@ -16,6 +19,7 @@ from app.doctors.models import (
 )
 from app.doctors.schemas import (
     BlockedSlotPut,
+    DoctorAccountCreate,
     DoctorProfilePut,
     DoctorReviewPut,
     FacilityPut,
@@ -132,6 +136,60 @@ def put_doctor_profile(
         for field, value in values.items():
             setattr(profile, field, value)
 
+    profile.specialty = specialty
+    profile.facility = facility
+    session.commit()
+    session.refresh(profile)
+    return profile
+
+
+def create_doctor_account(
+    session: Session,
+    data: DoctorAccountCreate,
+) -> DoctorProfile:
+    specialty = session.get(Specialty, data.specialty_id)
+    if specialty is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Specialty not found")
+    facility = session.get(Facility, data.facility_id) if data.facility_id else None
+    if data.facility_id and facility is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Facility not found")
+
+    cognito = boto3.client("cognito-idp")
+    user_pool_id = os.environ["COGNITO_USER_POOL_ID"]
+    try:
+        created = cognito.admin_create_user(
+            UserPoolId=user_pool_id,
+            Username=data.email,
+            UserAttributes=[
+                {"Name": "email", "Value": data.email},
+                {"Name": "email_verified", "Value": "true"},
+            ],
+            DesiredDeliveryMediums=["EMAIL"],
+        )
+    except cognito.exceptions.UsernameExistsException:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+    except ClientError as error:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Cognito error: {error.response['Error']['Message']}",
+        )
+
+    subject = next(
+        attr["Value"]
+        for attr in created["User"]["Attributes"]
+        if attr["Name"] == "sub"
+    )
+    cognito.admin_add_user_to_group(
+        UserPoolId=user_pool_id,
+        Username=data.email,
+        GroupName="doctor",
+    )
+
+    profile = DoctorProfile(
+        cognito_sub=subject,
+        **data.model_dump(mode="json", exclude={"email"}),
+    )
+    session.add(profile)
     profile.specialty = specialty
     profile.facility = facility
     session.commit()

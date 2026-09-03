@@ -39,7 +39,6 @@ class DoctorSummary(BaseModel):
     clinic_name: str | None
     years_experience: int
     rating: float
-    consultation_fee_vnd: int | None
     avatar_url: str | None
 
 
@@ -56,8 +55,11 @@ class DoctorProfilePut(BaseModel):
     bio: str | None = Field(default=None, max_length=5000)
     clinic_name: str | None = Field(default=None, max_length=150)
     years_experience: int = Field(default=0, ge=0, le=80)
-    consultation_fee_vnd: int | None = Field(default=None, ge=1000, le=100_000_000)
     avatar_url: HttpUrl | None = Field(default=None, max_length=500)
+
+
+class DoctorAccountCreate(DoctorProfilePut):
+    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=255)
 
 
 class WorkingDayPut(BaseModel):

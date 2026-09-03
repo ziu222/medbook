@@ -13,6 +13,7 @@ import { DoctorOverviewPage } from './routes/doctor/DoctorOverviewPage';
 import { DoctorSchedulePage } from './routes/doctor/DoctorSchedulePage';
 import { DoctorAppointmentsPage } from './routes/doctor/DoctorAppointmentsPage';
 import { DoctorAccountPage } from './routes/doctor/DoctorAccountPage';
+import { AdminCreateDoctorPage } from './routes/admin/AdminCreateDoctorPage';
 import { ScrollToTop } from './components/Common/ScrollToTop';
 import { getUserRole, handleAuthCallback, isAuthenticated } from './lib/auth';
 import { PATHS, doctorPath, pathForNavKey, specialtyPath } from './lib/routes';
@@ -134,6 +135,7 @@ function App() {
         <Route path={DOCTOR_PATHS.schedule} element={<DoctorSchedule authed={authed} />} />
         <Route path={DOCTOR_PATHS.appointments} element={<DoctorAppointments authed={authed} />} />
         <Route path={DOCTOR_PATHS.profile} element={<DoctorAccount authed={authed} />} />
+        <Route path="/admin/tao-bac-si" element={<AdminCreateDoctorPage authed={authed} />} />
         <Route path="*" element={<NotFoundPage authed={authed} />} />
       </Routes>
     </>

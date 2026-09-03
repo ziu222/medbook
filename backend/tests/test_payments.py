@@ -28,7 +28,6 @@ def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
             specialty=Specialty(name="Tim mạch", slug="tim-mach-payment"),
             display_name="Bác sĩ An",
             years_experience=10,
-            consultation_fee_vnd=200_000,
         )
         session.add_all(
             [
@@ -94,7 +93,7 @@ def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
         assert paid.json() == {
             "appointment_id": appointment_id,
             "provider": "manual",
-            "amount_vnd": 200_000,
+            "amount_vnd": 150_000,
             "status": "paid",
             "expires_at": paid.json()["expires_at"],
         }
@@ -117,7 +116,7 @@ def test_patient_payment_confirms_appointment_and_refunds_on_cancel() -> None:
             assert session.scalar(select(Payment)).status == "refunded"
             refund = session.scalar(select(Refund))
             assert refund.status == "succeeded"
-            assert refund.amount_vnd == 200_000
+            assert refund.amount_vnd == 150_000
             assert set(session.scalars(select(NotificationOutbox.event_type))) == {
                 "appointment_booked",
                 "payment_confirmed",

@@ -35,7 +35,6 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
   const [facilityId, setFacilityId] = useState<number | ''>(doctor?.facility?.id ?? '');
   const [clinicName, setClinicName] = useState(doctor?.clinic_name ?? '');
   const [yearsExperience, setYearsExperience] = useState(String(doctor?.years_experience ?? 0));
-  const [fee, setFee] = useState(doctor?.consultation_fee_vnd ? String(doctor.consultation_fee_vnd) : '');
   const [bio, setBio] = useState(doctor?.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +60,6 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
         bio: bio.trim() || null,
         clinic_name: clinicName.trim() || null,
         years_experience: Number(yearsExperience) || 0,
-        consultation_fee_vnd: fee ? Number(fee) : null,
         avatar_url: doctor?.avatar_url ?? null,
       });
       setSaved(true);
@@ -135,15 +133,9 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
           <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch 175" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={labelStyle}>Số năm kinh nghiệm</label>
-            <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Phí khám (VNĐ)</label>
-            <input type="number" min={0} step={1000} value={fee} onChange={(e) => setFee(e.target.value)} style={fieldStyle} placeholder="500000" />
-          </div>
+        <div>
+          <label style={labelStyle}>Số năm kinh nghiệm</label>
+          <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
         </div>
 
         <div>

@@ -58,6 +58,11 @@ variable "cognito_user_pool_id" {
   type        = string
 }
 
+variable "cognito_user_pool_arn" {
+  description = "Cognito User Pool ARN, used to grant admin user-management IAM permissions."
+  type        = string
+}
+
 variable "cognito_user_pool_endpoint" {
   description = "Cognito issuer endpoint used by the JWT authorizer."
   type        = string
