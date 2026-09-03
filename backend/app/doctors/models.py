@@ -50,10 +50,6 @@ class DoctorProfile(Base):
     __table_args__ = (
         CheckConstraint("years_experience >= 0", name="years_experience_nonnegative"),
         CheckConstraint("rating >= 0 AND rating <= 5", name="rating_range"),
-        CheckConstraint(
-            "consultation_fee_vnd IS NULL OR consultation_fee_vnd > 0",
-            name="consultation_fee_positive",
-        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -70,7 +66,6 @@ class DoctorProfile(Base):
     clinic_name: Mapped[str | None] = mapped_column(String(150))
     years_experience: Mapped[int] = mapped_column(default=0)
     rating: Mapped[Decimal] = mapped_column(Numeric(2, 1), default=0)
-    consultation_fee_vnd: Mapped[int | None]
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

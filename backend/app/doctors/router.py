@@ -10,6 +10,7 @@ from app.core.database import get_session
 from app.doctors.schemas import (
     BlockedSlotPut,
     BlockedSlotRead,
+    DoctorAccountCreate,
     DoctorDetail,
     DoctorProfilePut,
     DoctorReviewPut,
@@ -25,6 +26,7 @@ from app.doctors.service import (
     add_blocked_slot,
     add_working_interval,
     close_working_day,
+    create_doctor_account,
     delete_blocked_slot,
     get_doctor,
     get_doctor_by_subject,
@@ -104,6 +106,15 @@ def replace_facility(
     _: AdminUser,
 ):
     return put_facility(session, data, facility_id)
+
+
+@router.post(
+    "/admin/doctors",
+    response_model=DoctorDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_doctor_account(data: DoctorAccountCreate, session: DatabaseSession, _: AdminUser):
+    return create_doctor_account(session, data)
 
 
 @router.get("/doctors", response_model=list[DoctorSummary])

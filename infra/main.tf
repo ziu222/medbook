@@ -1,7 +1,7 @@
 locals {
   name          = var.project
   vpc_cidr      = "10.0.0.0/16"
-  image_sha     = "test-15"
+  image_sha     = "test-17"
   vnpay_pay_url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
   vnpay_api_url = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
 
@@ -111,6 +111,7 @@ module "api" {
   database_username          = module.rds.username
   database_secret_arn        = module.rds.master_secret_arn
   cognito_user_pool_id       = module.cognito.user_pool_id
+  cognito_user_pool_arn      = module.cognito.user_pool_arn
   cognito_user_pool_endpoint = module.cognito.user_pool_endpoint
   cognito_app_client_id      = module.cognito.app_client_id
   notification_queue_arn     = module.notifications.queue_arn

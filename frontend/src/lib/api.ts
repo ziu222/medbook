@@ -24,7 +24,6 @@ export interface DoctorSummary {
   clinic_name: string | null;
   years_experience: number;
   rating: number;
-  consultation_fee_vnd: number | null;
   avatar_url: string | null;
 }
 
@@ -127,12 +126,14 @@ export interface DoctorProfileInput {
   bio: string | null;
   clinic_name: string | null;
   years_experience: number;
-  consultation_fee_vnd: number | null;
   avatar_url: string | null;
 }
 
 /** Also creates the profile row on first save — the backend PUT upserts. */
 export const saveMyDoctorProfile = (input: DoctorProfileInput) => put<DoctorDetail>('/api/doctor/me', input);
+
+export const createDoctorAccount = (input: DoctorProfileInput & { email: string }) =>
+  post<DoctorDetail>('/api/admin/doctors', input);
 
 export const fetchAvailability = (doctorId: number, date: string) =>
   get<AvailabilitySlot[]>(`/api/doctors/${doctorId}/availability?date=${date}`);
@@ -154,6 +155,18 @@ export const bookAppointment = (input: BookAppointmentInput) =>
   });
 
 export const startPayment = (appointmentId: number) => post<PaymentRead>(`/api/appointments/${appointmentId}/payment`, {});
+
+export interface CancellationRead {
+  appointment_id: number;
+  refund_percentage: number;
+  refund_status: 'not_applicable' | 'pending' | 'succeeded' | 'failed';
+}
+
+export const cancelPatientAppointment = (appointmentId: number, reason: string) =>
+  post<CancellationRead>(`/api/appointments/${appointmentId}/cancel`, { reason });
+
+export const submitDoctorReview = (appointmentId: number, score: number, comment: string) =>
+  put<unknown>(`/api/appointments/${appointmentId}/review`, { score, comment: comment || null });
 
 export const fetchMyAppointments = () => get<AppointmentRead[]>('/api/appointments/me');
 

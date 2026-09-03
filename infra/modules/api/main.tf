@@ -73,6 +73,19 @@ resource "aws_iam_role_policy" "lambda_notification_queue" {
   policy = data.aws_iam_policy_document.lambda_notification_queue.json
 }
 
+data "aws_iam_policy_document" "lambda_cognito_admin" {
+  statement {
+    actions   = ["cognito-idp:AdminCreateUser", "cognito-idp:AdminAddUserToGroup"]
+    resources = [var.cognito_user_pool_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_cognito_admin" {
+  name   = "manage-doctor-accounts"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_cognito_admin.json
+}
+
 resource "aws_cloudwatch_log_group" "api_lambda" {
   name              = "/aws/lambda/${var.name}-api"
   retention_in_days = 30
