@@ -68,9 +68,16 @@ const pinIcon = (
   </svg>
 );
 
-const starIcon = (filled: boolean) => (
-  <svg width="30" height="30" viewBox="0 0 24 24" fill={filled ? 'var(--gold)' : 'none'} stroke="var(--gold)" strokeWidth="1.6" strokeLinejoin="round">
+const starIcon = (filled: boolean, size = 30) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'var(--gold)' : 'none'} stroke="var(--gold)" strokeWidth="1.6" strokeLinejoin="round">
     <path d="M12 2.8l2.7 5.9 6.4.7-4.8 4.4 1.3 6.3L12 16.9l-5.6 3.2 1.3-6.3-4.8-4.4 6.4-.7Z" />
+  </svg>
+);
+
+const refundIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v5h5" />
   </svg>
 );
 
@@ -206,7 +213,7 @@ function AppointmentCard({
   onPaid,
   onCancelled,
   cancelNote,
-  reviewed,
+  reviewedScore,
   onReviewed,
 }: {
   appointment: AppointmentRead;
@@ -216,8 +223,8 @@ function AppointmentCard({
   onPaid: (appointmentId: number) => void;
   onCancelled: (appointmentId: number, note: string) => void;
   cancelNote: string | null;
-  reviewed: boolean;
-  onReviewed: (appointmentId: number) => void;
+  reviewedScore: number | null;
+  onReviewed: (appointmentId: number, score: number) => void;
 }) {
   const [paying, setPaying] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -267,7 +274,7 @@ function AppointmentCard({
     setError(null);
     try {
       await submitDoctorReview(appointment.id, score, comment);
-      onReviewed(appointment.id);
+      onReviewed(appointment.id, score);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gửi đánh giá thất bại.');
     } finally {
@@ -300,8 +307,11 @@ function AppointmentCard({
           {initialsFor(doctor?.display_name ?? '?')}
         </div>
         <div style={{ minWidth: 0 }}>
-          <div onClick={() => onSelectDoctor(appointment.doctor_id)} style={{ fontWeight: 800, fontSize: '16.5px', cursor: 'pointer' }}>
-            {doctor?.display_name ?? `Bác sĩ #${appointment.doctor_id}`}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <div onClick={() => onSelectDoctor(appointment.doctor_id)} style={{ fontWeight: 800, fontSize: '16.5px', cursor: 'pointer' }}>
+              {doctor?.display_name ?? `Bác sĩ #${appointment.doctor_id}`}
+            </div>
+            <span style={{ color: 'var(--faint)', fontSize: '12px', fontFamily: 'monospace' }}>#{appointment.id}</span>
           </div>
           <div style={{ color: 'var(--muted)', fontSize: '14px' }}>{doctor?.specialty.name ?? '—'}</div>
         </div>
@@ -323,15 +333,21 @@ function AppointmentCard({
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '14px', color: 'var(--ink2)', margin: '16px 0 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '14px', color: 'var(--ink2)', margin: '16px 0 0', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {clockIcon}
-          <b style={{ color: 'var(--ink)' }}>{appointment.start_time.slice(0, 5)}</b> · {DATE_FORMAT.format(new Date(appointment.appointment_date))}
+          <b style={{ color: 'var(--ink)' }}>
+            {appointment.start_time.slice(0, 5)}–{appointment.end_time.slice(0, 5)}
+          </b>{' '}
+          · {DATE_FORMAT.format(new Date(appointment.appointment_date))}
         </div>
         {doctor?.facility && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {pinIcon}
-            {doctor.facility.name}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <span style={{ marginTop: '2px', flexShrink: 0 }}>{pinIcon}</span>
+            <span>
+              {doctor.facility.name}
+              {doctor.facility.address && <span style={{ color: 'var(--faint)' }}> · {doctor.facility.address}</span>}
+            </span>
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
@@ -341,7 +357,24 @@ function AppointmentCard({
       </div>
 
       {error && <div style={{ color: '#c0492f', fontSize: '13.5px', marginTop: '14px' }}>{error}</div>}
-      {cancelNote && !error && <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '14px' }}>{cancelNote}</div>}
+      {cancelNote && !error && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '14px',
+            padding: '10px 13px',
+            borderRadius: '11px',
+            background: 'var(--tint2)',
+            color: 'var(--ink2)',
+            fontSize: '13.5px',
+          }}
+        >
+          <span style={{ color: 'var(--faint)', flexShrink: 0, display: 'flex' }}>{refundIcon}</span>
+          {cancelNote}
+        </div>
+      )}
 
       {appointment.status === 'pending' && (
         <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
@@ -362,40 +395,76 @@ function AppointmentCard({
           >
             {paying ? 'Đang xử lý...' : 'Thanh toán ngay'}
           </div>
-          <span
+          <div
             onClick={busy ? undefined : () => setShowCancelModal(true)}
-            className={busy ? undefined : 'link-hover'}
-            style={{ alignSelf: 'center', fontWeight: 700, fontSize: '14px', color: '#c0492f', cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+            className={busy ? undefined : 'btn-hover'}
+            style={{
+              padding: '12px 18px',
+              borderRadius: '12px',
+              border: '1px solid #f3d2ca',
+              fontWeight: 700,
+              fontSize: '14px',
+              color: '#c0492f',
+              cursor: busy ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
             Hủy lịch
-          </span>
+          </div>
         </div>
       )}
 
       {appointment.status === 'confirmed' && (
-        <div style={{ marginTop: '16px' }}>
-          <span
-            onClick={busy ? undefined : () => setShowCancelModal(true)}
-            className={busy ? undefined : 'link-hover'}
-            style={{ fontWeight: 700, fontSize: '14px', color: '#c0492f', cursor: busy ? 'not-allowed' : 'pointer' }}
-          >
-            Hủy lịch
-          </span>
+        <div
+          onClick={busy ? undefined : () => setShowCancelModal(true)}
+          className={busy ? undefined : 'btn-hover'}
+          style={{
+            marginTop: '16px',
+            textAlign: 'center',
+            padding: '11px',
+            borderRadius: '12px',
+            border: '1px solid #f3d2ca',
+            fontWeight: 700,
+            fontSize: '14px',
+            color: '#c0492f',
+            cursor: busy ? 'not-allowed' : 'pointer',
+          }}
+        >
+          Hủy lịch
         </div>
       )}
 
       {appointment.status === 'completed' && (
         <div style={{ marginTop: '16px' }}>
-          {reviewed ? (
-            <div style={{ color: 'var(--brand-d)', fontSize: '14px', fontWeight: 700 }}>Cảm ơn bạn đã đánh giá</div>
+          {reviewedScore !== null ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '1px' }}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span key={n} style={{ lineHeight: 0 }}>
+                    {starIcon(n <= reviewedScore, 16)}
+                  </span>
+                ))}
+              </div>
+              <span style={{ color: 'var(--muted)', fontSize: '13.5px' }}>Cảm ơn bạn đã đánh giá</span>
+            </div>
           ) : (
-            <span
+            <div
               onClick={busy ? undefined : () => setShowReviewModal(true)}
-              className={busy ? undefined : 'link-hover'}
-              style={{ fontWeight: 700, fontSize: '14px', color: 'var(--brand-d)', cursor: busy ? 'not-allowed' : 'pointer' }}
+              className={busy ? undefined : 'btn-hover'}
+              style={{
+                textAlign: 'center',
+                padding: '11px',
+                borderRadius: '12px',
+                border: '1px solid var(--soft)',
+                background: 'var(--tint2)',
+                fontWeight: 700,
+                fontSize: '14px',
+                color: 'var(--brand-d)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
             >
               Đánh giá bác sĩ
-            </span>
+            </div>
           )}
         </div>
       )}
@@ -421,7 +490,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
   const [doctorsById, setDoctorsById] = useState<Map<number, DoctorSummary>>(new Map());
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [reviewedIds, setReviewedIds] = useState<Set<number>>(new Set());
+  const [reviewedScores, setReviewedScores] = useState<Map<number, number>>(new Map());
   const [cancelNotes, setCancelNotes] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
@@ -452,8 +521,8 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
     setCancelNotes((prev) => new Map(prev).set(appointmentId, note));
   };
 
-  const handleReviewed = (appointmentId: number) => {
-    setReviewedIds((prev) => new Set(prev).add(appointmentId));
+  const handleReviewed = (appointmentId: number, score: number) => {
+    setReviewedScores((prev) => new Map(prev).set(appointmentId, score));
   };
 
   const upcoming = appointments.filter(isUpcoming).sort(byDate);
@@ -533,7 +602,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       onPaid={handlePaid}
                       onCancelled={handleCancelled}
                       cancelNote={cancelNotes.get(a.id) ?? null}
-                      reviewed={reviewedIds.has(a.id)}
+                      reviewedScore={reviewedScores.get(a.id) ?? null}
                       onReviewed={handleReviewed}
                     />
                   ))}
@@ -551,7 +620,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       onPaid={handlePaid}
                       onCancelled={handleCancelled}
                       cancelNote={cancelNotes.get(a.id) ?? null}
-                      reviewed={reviewedIds.has(a.id)}
+                      reviewedScore={reviewedScores.get(a.id) ?? null}
                       onReviewed={handleReviewed}
                     />
                   ))}
