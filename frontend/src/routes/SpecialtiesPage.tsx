@@ -136,7 +136,7 @@ export function SpecialtiesPage({ authed, onNavigate, onSelectSpecialty }: Speci
                 }}
               >
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--coral)' }} />
-                Bệnh viện Quân y 175
+                MedBook
               </div>
               <h1 style={{ fontSize: '44px', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-1.2px', margin: 0 }}>
                 Danh mục <span style={{ color: 'var(--brand)' }}>chuyên khoa</span>

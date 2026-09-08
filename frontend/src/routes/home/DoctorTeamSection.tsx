@@ -38,7 +38,7 @@ export function DoctorTeamSection() {
     <section style={{ padding: '52px 0 8px' }}>
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <h2 style={{ fontSize: '34px', fontWeight: 800, letterSpacing: '-.6px', margin: 0 }}>Đội ngũ Bác sĩ</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '16px', margin: '10px 0 0' }}>Chuyên gia đầu ngành của Bệnh viện Quân y 175</p>
+        <p style={{ color: 'var(--muted)', fontSize: '16px', margin: '10px 0 0' }}>Chuyên gia đầu ngành đã được xác thực trên MedBook</p>
       </div>
 
       <div style={{ position: 'relative' }}>

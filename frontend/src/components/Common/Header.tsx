@@ -54,8 +54,12 @@ export function Header({ active = 'home', authed = false, onNavigate }: HeaderPr
           gap: '28px',
         }}
       >
-        <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="/long_primary_logo.svg" alt="Bệnh viện Quân y 175" style={{ height: '42px', width: 'auto', display: 'block' }} />
+        <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/favicon.svg" alt="" style={{ width: '34px', height: '34px', display: 'block' }} />
+          <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-.3px' }}>
+            <span style={{ color: 'var(--ink)' }}>Med</span>
+            <span style={{ color: 'var(--brand)' }}>Book</span>
+          </span>
         </a>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
