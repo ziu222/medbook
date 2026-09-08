@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,20 +17,23 @@ from app.appointments.schemas import (
     AvailabilitySlot,
     MedicalRecordPut,
     RelativeAppointmentCreate,
+    RescheduleRequest,
 )
 from app.cancellations.models import (
     AppointmentPolicyAssignment,
     AppointmentStatusEvent,
     NotificationOutbox,
 )
-from app.cancellations.service import assign_active_policy
+from app.cancellations.service import assign_active_policy, assigned_policy
 from app.doctors.models import DoctorBlockedSlot, DoctorProfile, DoctorWorkingDay
 from app.payments.models import Payment
 from app.users.models import UserProfile
 
-SLOT_DURATION = timedelta(minutes=30)
 ACTIVE_STATUSES = ("pending", "confirmed")
 APP_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
+# ponytail: flat caps, not admin-configurable — wire up if abuse/complaints show up.
+MAX_ACTIVE_BOOKINGS_PER_ACCOUNT = 5
+MAX_FREE_RESCHEDULES = 1
 
 
 def get_available_slots(
@@ -38,8 +41,10 @@ def get_available_slots(
     doctor_id: int,
     appointment_date: date,
 ) -> list[AvailabilitySlot]:
-    if session.get(DoctorProfile, doctor_id) is None:
+    doctor = session.get(DoctorProfile, doctor_id)
+    if doctor is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
+    slot_duration = timedelta(minutes=doctor.slot_duration_minutes)
 
     working_days = list(
         session.scalars(
@@ -74,8 +79,8 @@ def get_available_slots(
     for working_day in working_days:
         current = datetime.combine(appointment_date, working_day.start_time)
         finish = datetime.combine(appointment_date, working_day.end_time)
-        while current + SLOT_DURATION <= finish:
-            end = current + SLOT_DURATION
+        while current + slot_duration <= finish:
+            end = current + slot_duration
             is_future = appointment_date > now.date() or current.time() > now.time()
             is_blocked = any(
                 current.time() < item.end_time and end.time() > item.start_time
@@ -158,6 +163,28 @@ def create_appointment(
     if profile is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Complete user profile first")
 
+    if data.client_request_id is not None:
+        replay = session.scalar(
+            select(Appointment).where(
+                Appointment.booker_cognito_sub == subject,
+                Appointment.client_request_id == data.client_request_id,
+            )
+        )
+        if replay is not None:
+            return replay
+
+    active_count = session.scalar(
+        select(func.count(Appointment.id)).where(
+            Appointment.booker_cognito_sub == subject,
+            Appointment.status.in_(ACTIVE_STATUSES),
+        )
+    )
+    if active_count >= MAX_ACTIVE_BOOKINGS_PER_ACCOUNT:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many active bookings on this account",
+        )
+
     slots = get_available_slots(session, data.doctor_id, data.appointment_date)
     slot = next((slot for slot in slots if slot.start_time == data.start_time), None)
     if slot is None:
@@ -189,6 +216,7 @@ def create_appointment(
         start_time=data.start_time,
         end_time=slot.end_time,
         status="pending",
+        client_request_id=data.client_request_id,
     )
     session.add(appointment)
     try:
@@ -212,6 +240,116 @@ def create_appointment(
                 attempts=0,
             )
         )
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        if data.client_request_id is not None:
+            replay = session.scalar(
+                select(Appointment).where(
+                    Appointment.booker_cognito_sub == subject,
+                    Appointment.client_request_id == data.client_request_id,
+                )
+            )
+            if replay is not None:
+                return replay
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Slot is not available"
+        ) from error
+    session.refresh(appointment)
+    return appointment
+
+
+def reschedule_appointment(
+    session: Session,
+    appointment_id: int,
+    subject: str,
+    data: RescheduleRequest,
+) -> Appointment:
+    appointment = session.scalar(
+        select(Appointment).where(Appointment.id == appointment_id).with_for_update()
+    )
+    if appointment is None or appointment.booker_cognito_sub != subject:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
+    if appointment.status not in ACTIVE_STATUSES:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Cannot reschedule appointment with status {appointment.status}",
+        )
+    if appointment.reschedule_count >= MAX_FREE_RESCHEDULES:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Reschedule limit reached, cancel and book a new slot instead",
+        )
+    if data.appointment_date < datetime.now(APP_TIMEZONE).date():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "appointment_date cannot be in the past",
+        )
+
+    policy = assigned_policy(session, appointment.id)
+    appointment_at = datetime.combine(
+        appointment.appointment_date, appointment.start_time, tzinfo=APP_TIMEZONE
+    )
+    minutes_before = int(
+        (appointment_at - datetime.now(APP_TIMEZONE)).total_seconds() // 60
+    )
+    if (
+        policy.patient_cancel_cutoff_minutes is not None
+        and minutes_before < policy.patient_cancel_cutoff_minutes
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Appointment is inside the cancellation/reschedule cutoff",
+        )
+
+    slots = get_available_slots(session, appointment.doctor_id, data.appointment_date)
+    slot = next((s for s in slots if s.start_time == data.start_time), None)
+    if slot is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Slot is not available")
+
+    old_date, old_start = appointment.appointment_date, appointment.start_time
+    appointment.appointment_date = data.appointment_date
+    appointment.start_time = data.start_time
+    appointment.end_time = slot.end_time
+    appointment.reschedule_count += 1
+
+    session.add(
+        AppointmentStatusEvent(
+            appointment_id=appointment.id,
+            from_status=appointment.status,
+            to_status="moved",
+            actor_sub=subject,
+            actor_role="patient",
+            reason=(
+                f"Dời lịch từ {old_date} {old_start} sang "
+                f"{data.appointment_date} {data.start_time}"
+            ),
+            policy_id=policy.id,
+            minutes_before=minutes_before,
+            refund_percentage=0,
+            refund_status="not_applicable",
+        )
+    )
+    session.flush()
+    session.add(
+        NotificationOutbox(
+            event_type="appointment_rescheduled",
+            aggregate_id=appointment.id,
+            payload=json.dumps(
+                {
+                    "appointment_id": appointment.id,
+                    "booker_sub": appointment.booker_cognito_sub,
+                    "patient_full_name": appointment.patient_full_name,
+                    "appointment_date": appointment.appointment_date.isoformat(),
+                    "start_time": appointment.start_time.isoformat(),
+                },
+                ensure_ascii=False,
+            ),
+            status="pending",
+            attempts=0,
+        )
+    )
+    try:
         session.commit()
     except IntegrityError as error:
         session.rollback()

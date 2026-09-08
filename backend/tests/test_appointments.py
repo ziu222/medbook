@@ -225,4 +225,247 @@ def test_booking_self_relative_availability_and_role_views() -> None:
             assert event.actor_sub == "doctor-sub"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_hourly_doctor_gets_hourly_slots_and_cannot_change_with_active_booking() -> None:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    work_date = datetime.now(UTC).date() + timedelta(days=1)
+
+    with Session(engine) as session:
+        specialty = Specialty(name="Tim mạch", slug="tim-mach")
+        doctor = DoctorProfile(
+            cognito_sub="doctor-sub",
+            specialty=specialty,
+            display_name="Bác sĩ An",
+            years_experience=10,
+            slot_duration_minutes=60,
+        )
+        session.add_all(
+            [
+                doctor,
+                CancellationPolicy(
+                    patient_cancel_cutoff_minutes=1440,
+                    provider_cancel_cutoff_minutes=None,
+                    is_active=True,
+                    created_by_sub="system",
+                    effective_from=datetime.now(UTC),
+                    refund_tiers=[
+                        RefundTier(
+                            actor_role="patient",
+                            min_minutes_before=1440,
+                            refund_percentage=100,
+                        ),
+                        RefundTier(
+                            actor_role="provider",
+                            min_minutes_before=0,
+                            refund_percentage=100,
+                        ),
+                    ],
+                ),
+                UserProfile(
+                    cognito_sub="patient-sub",
+                    display_name="Nguyễn Văn A",
+                    phone_number="0912345678",
+                ),
+            ]
+        )
+        session.flush()
+        specialty_id = specialty.id
+        session.add(
+            DoctorWorkingDay(
+                doctor_id=doctor.id,
+                work_date=work_date,
+                start_time=time(8),
+                end_time=time(10),
+            )
+        )
+        session.commit()
+        doctor_id = doctor.id
+
+    def session_override():
+        with Session(engine) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = session_override
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        subject="patient-sub", groups=frozenset({"patient"})
+    )
+
+    try:
+        client = TestClient(app)
+
+        # 2-hour window at 60 min/slot => 2 slots (vs. 4 at the 30 min default).
+        availability = client.get(
+            f"/api/doctors/{doctor_id}/availability",
+            params={"date": work_date},
+        )
+        assert availability.status_code == 200
+        assert [slot["start_time"] for slot in availability.json()] == [
+            "08:00:00",
+            "09:00:00",
+        ]
+
+        booked = client.post(
+            "/api/appointments",
+            json={
+                "doctor_id": doctor_id,
+                "appointment_date": work_date.isoformat(),
+                "start_time": "08:00",
+                "booking_for": "self",
+                "symptoms": "Đau ngực nhẹ khi vận động",
+            },
+        )
+        assert booked.status_code == 201
+
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            subject="doctor-sub", groups=frozenset({"doctor"})
+        )
+        blocked = client.put(
+            "/api/doctor/me",
+            json={
+                "specialty_id": specialty_id,
+                "display_name": "Bác sĩ An",
+                "years_experience": 10,
+                "slot_duration_minutes": 30,
+            },
+        )
+        assert blocked.status_code == 409
+
+        unrelated_update = client.put(
+            "/api/doctor/me",
+            json={
+                "specialty_id": specialty_id,
+                "display_name": "Bác sĩ An 2",
+                "years_experience": 10,
+                "slot_duration_minutes": 60,
+            },
+        )
+        assert unrelated_update.status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_idempotent_booking_active_cap_and_reschedule() -> None:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    work_date = datetime.now(UTC).date() + timedelta(days=1)
+
+    with Session(engine) as session:
+        specialty = Specialty(name="Tim mạch", slug="tim-mach")
+        doctor = DoctorProfile(
+            cognito_sub="doctor-sub",
+            specialty=specialty,
+            display_name="Bác sĩ An",
+            years_experience=10,
+        )
+        session.add_all(
+            [
+                doctor,
+                CancellationPolicy(
+                    patient_cancel_cutoff_minutes=60,
+                    provider_cancel_cutoff_minutes=None,
+                    is_active=True,
+                    created_by_sub="system",
+                    effective_from=datetime.now(UTC),
+                    refund_tiers=[
+                        RefundTier(
+                            actor_role="patient",
+                            min_minutes_before=60,
+                            refund_percentage=100,
+                        ),
+                        RefundTier(
+                            actor_role="provider",
+                            min_minutes_before=0,
+                            refund_percentage=100,
+                        ),
+                    ],
+                ),
+                UserProfile(
+                    cognito_sub="patient-sub",
+                    display_name="Nguyễn Văn A",
+                    phone_number="0912345678",
+                ),
+            ]
+        )
+        session.flush()
+        session.add(
+            DoctorWorkingDay(
+                doctor_id=doctor.id,
+                work_date=work_date,
+                start_time=time(8),
+                end_time=time(14),
+            )
+        )
+        session.commit()
+        doctor_id = doctor.id
+
+    def session_override():
+        with Session(engine) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = session_override
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        subject="patient-sub", groups=frozenset({"patient"})
+    )
+
+    def book(start_time: str, client_request_id: str | None = None) -> dict:
+        payload = {
+            "doctor_id": doctor_id,
+            "appointment_date": work_date.isoformat(),
+            "start_time": start_time,
+            "booking_for": "self",
+            "symptoms": "Đau ngực nhẹ khi vận động",
+        }
+        if client_request_id is not None:
+            payload["client_request_id"] = client_request_id
+        return client.post("/api/appointments", json=payload)
+
+    try:
+        client = TestClient(app)
+
+        first = book("08:00", client_request_id="dup-key")
+        assert first.status_code == 201
+        appointment_id = first.json()["id"]
+        assert first.json()["reschedule_count"] == 0
+
+        replay = book("08:00", client_request_id="dup-key")
+        assert replay.status_code == 201
+        assert replay.json()["id"] == appointment_id
+        assert len(client.get("/api/appointments/me").json()) == 1
+
+        for start_time in ("08:30", "09:00", "09:30", "10:00"):
+            filler = book(start_time)
+            assert filler.status_code == 201
+
+        assert len(client.get("/api/appointments/me").json()) == 5
+
+        over_cap = book("10:30")
+        assert over_cap.status_code == 429
+
+        moved = client.post(
+            f"/api/appointments/{appointment_id}/reschedule",
+            json={"appointment_date": work_date.isoformat(), "start_time": "13:00"},
+        )
+        assert moved.status_code == 200
+        assert moved.json()["start_time"] == "13:00:00"
+        assert moved.json()["reschedule_count"] == 1
+
+        moved_again = client.post(
+            f"/api/appointments/{appointment_id}/reschedule",
+            json={"appointment_date": work_date.isoformat(), "start_time": "13:30"},
+        )
+        assert moved_again.status_code == 409
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
         engine.dispose()

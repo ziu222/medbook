@@ -63,6 +63,14 @@ class Appointment(Base):
             postgresql_where=text("status IN ('pending', 'confirmed')"),
             sqlite_where=text("status IN ('pending', 'confirmed')"),
         ),
+        Index(
+            "uq_appointment_client_request",
+            "booker_cognito_sub",
+            "client_request_id",
+            unique=True,
+            postgresql_where=text("client_request_id IS NOT NULL"),
+            sqlite_where=text("client_request_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -87,6 +95,8 @@ class Appointment(Base):
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
     status: Mapped[str] = mapped_column(String(10), default="pending")
+    client_request_id: Mapped[str | None] = mapped_column(String(64))
+    reschedule_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
