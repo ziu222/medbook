@@ -1,7 +1,7 @@
 locals {
   name          = var.project
   vpc_cidr      = "10.0.0.0/16"
-  image_sha     = "test-17"
+  image_sha     = "test-19"
   vnpay_pay_url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
   vnpay_api_url = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
 
