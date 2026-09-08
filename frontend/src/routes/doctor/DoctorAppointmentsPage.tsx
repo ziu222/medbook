@@ -4,10 +4,14 @@ import { LoadingSpinner } from '../../components/Common/LoadingSpinner';
 import { Modal } from '../../components/Common/Modal';
 import {
   ApiError,
+  RELATIONSHIP_LABELS,
   cancelDoctorAppointment,
   completeAppointment,
   fetchDoctorAppointments,
+  fetchMedicalRecord,
+  saveMedicalRecord,
   type AppointmentRead,
+  type MedicalRecord,
 } from '../../lib/api';
 import type { DoctorNavKey } from '../../lib/doctorRoutes';
 
@@ -75,10 +79,116 @@ function CancelModal({ open, onClose, onConfirm }: { open: boolean; onClose: () 
   );
 }
 
+function MedicalRecordFormModal({ open, onClose, appointmentId }: { open: boolean; onClose: () => void; appointmentId: number }) {
+  const [loading, setLoading] = useState(true);
+  const [clinicalNotes, setClinicalNotes] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [prescription, setPrescription] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    setError(null);
+    fetchMedicalRecord(appointmentId)
+      .then((record: MedicalRecord | null) => {
+        setClinicalNotes(record?.clinical_notes ?? '');
+        setDiagnosis(record?.diagnosis ?? '');
+        setPrescription(record?.prescription ?? '');
+      })
+      .catch(() => setError('Không tải được hồ sơ khám.'))
+      .finally(() => setLoading(false));
+  }, [open, appointmentId]);
+
+  const handleSubmit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await saveMedicalRecord(appointmentId, {
+        clinical_notes: clinicalNotes.trim(),
+        diagnosis: diagnosis.trim() || null,
+        prescription: prescription.trim() || null,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Lưu hồ sơ khám thất bại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const canSave = clinicalNotes.trim().length > 0 && !busy && !loading;
+
+  return (
+    <Modal open={open} title="Hồ sơ khám" onClose={onClose}>
+      {loading ? (
+        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Đang tải...</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '18px' }}>
+          <div>
+            <label style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px', display: 'block' }}>Ghi chú khám</label>
+            <textarea
+              value={clinicalNotes}
+              onChange={(e) => setClinicalNotes(e.target.value)}
+              rows={4}
+              maxLength={5000}
+              placeholder="Tình trạng, kết quả khám..."
+              style={{ width: '100%', padding: '11px 14px', borderRadius: '11px', border: '1px solid var(--line)', fontSize: '14px', resize: 'vertical', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px', display: 'block' }}>Chẩn đoán (không bắt buộc)</label>
+            <textarea
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
+              rows={2}
+              maxLength={1000}
+              style={{ width: '100%', padding: '11px 14px', borderRadius: '11px', border: '1px solid var(--line)', fontSize: '14px', resize: 'vertical', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px', display: 'block' }}>Đơn thuốc (không bắt buộc)</label>
+            <textarea
+              value={prescription}
+              onChange={(e) => setPrescription(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              style={{ width: '100%', padding: '11px 14px', borderRadius: '11px', border: '1px solid var(--line)', fontSize: '14px', resize: 'vertical', outline: 'none' }}
+            />
+          </div>
+        </div>
+      )}
+      {error && <div style={{ color: '#c0492f', fontSize: '13.5px', marginBottom: '14px' }}>{error}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <span onClick={onClose} className="link-hover" style={{ padding: '11px 18px', borderRadius: '11px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', color: 'var(--ink2)' }}>
+          Đóng
+        </span>
+        <span
+          onClick={canSave ? handleSubmit : undefined}
+          className={canSave ? 'btn-hover' : undefined}
+          style={{
+            padding: '11px 20px',
+            borderRadius: '11px',
+            fontWeight: 700,
+            fontSize: '14px',
+            cursor: canSave ? 'pointer' : 'not-allowed',
+            background: canSave ? 'var(--brand-grad)' : 'var(--line)',
+            color: canSave ? '#fff' : 'var(--faint)',
+          }}
+        >
+          {busy ? 'Đang lưu...' : 'Lưu hồ sơ'}
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
 function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRead; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showMedicalRecordModal, setShowMedicalRecordModal] = useState(false);
   const status = STATUS_META[appointment.status] ?? { label: appointment.status, color: 'var(--muted)', bg: 'var(--tint2)' };
 
   const handleCancel = async (reason: string) => {
@@ -112,7 +222,15 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
   return (
     <>
     <tr style={{ borderTop: '1px solid var(--line)' }}>
-      <td style={{ padding: '13px 10px', fontWeight: 700 }}>{appointment.patient_full_name}</td>
+      <td style={{ padding: '13px 10px', fontWeight: 700 }}>
+        {appointment.patient_full_name}
+        {appointment.booking_for === 'relative' && (
+          <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+            Đặt hộ{appointment.relationship && ` · ${RELATIONSHIP_LABELS[appointment.relationship]}`}
+            {appointment.patient_phone_number && ` · ${appointment.patient_phone_number}`}
+          </div>
+        )}
+      </td>
       <td style={{ padding: '13px 10px' }}>
         {DATE_FORMAT.format(new Date(appointment.appointment_date))} · {appointment.start_time.slice(0, 5)}
       </td>
@@ -134,6 +252,15 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
               Hoàn tất khám
             </span>
           )}
+          {appointment.status === 'completed' && (
+            <span
+              onClick={() => setShowMedicalRecordModal(true)}
+              className="link-hover"
+              style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--brand-d)', cursor: 'pointer' }}
+            >
+              Hồ sơ khám
+            </span>
+          )}
           {canCancel && (
             <span
               onClick={busy ? undefined : () => setShowCancelModal(true)}
@@ -147,6 +274,7 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
       </td>
     </tr>
     <CancelModal open={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={handleCancel} />
+    <MedicalRecordFormModal open={showMedicalRecordModal} onClose={() => setShowMedicalRecordModal(false)} appointmentId={appointment.id} />
     </>
   );
 }

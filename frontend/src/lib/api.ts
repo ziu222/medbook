@@ -22,13 +22,16 @@ export interface DoctorSummary {
   specialty: Specialty;
   facility: Facility | null;
   clinic_name: string | null;
+  professional_title: string | null;
   years_experience: number;
+  slot_duration_minutes: number;
   rating: number;
   avatar_url: string | null;
 }
 
 export interface DoctorDetail extends DoctorSummary {
   bio: string | null;
+  certificates: string[];
 }
 
 export interface AvailabilitySlot {
@@ -36,17 +39,31 @@ export interface AvailabilitySlot {
   end_time: string;
 }
 
+export type Relationship = 'father' | 'mother' | 'child' | 'spouse' | 'sibling' | 'other';
+
+export const RELATIONSHIP_LABELS: Record<Relationship, string> = {
+  father: 'Cha',
+  mother: 'Mẹ',
+  child: 'Con',
+  spouse: 'Vợ/chồng',
+  sibling: 'Anh/chị/em',
+  other: 'Khác',
+};
+
 export interface AppointmentRead {
   id: number;
   doctor_id: number;
-  booking_for: string;
+  booking_for: 'self' | 'relative';
   patient_full_name: string;
   patient_phone_number: string | null;
+  patient_national_id_last4: string | null;
+  relationship: Relationship | null;
   symptoms: string;
   appointment_date: string;
   start_time: string;
   end_time: string;
   status: string;
+  reschedule_count: number;
   created_at: string;
 }
 
@@ -125,7 +142,10 @@ export interface DoctorProfileInput {
   display_name: string;
   bio: string | null;
   clinic_name: string | null;
+  professional_title?: string | null;
+  certificates?: string[];
   years_experience: number;
+  slot_duration_minutes?: 30 | 60;
   avatar_url: string | null;
 }
 
@@ -138,11 +158,22 @@ export const createDoctorAccount = (input: DoctorProfileInput & { email: string 
 export const fetchAvailability = (doctorId: number, date: string) =>
   get<AvailabilitySlot[]>(`/api/doctors/${doctorId}/availability?date=${date}`);
 
+export interface RelativeInput {
+  fullName: string;
+  relationship: Relationship;
+  phoneNumber: string;
+  nationalId: string;
+}
+
 export interface BookAppointmentInput {
   doctorId: number;
   appointmentDate: string;
   startTime: string;
   symptoms: string;
+  /** Omitted (or 'self') books for the account holder; pass `relative` to book on someone else's behalf. */
+  relative?: RelativeInput;
+  /** Lets a retried/double-clicked submit replay the original booking instead of creating a duplicate. */
+  clientRequestId?: string;
 }
 
 export const bookAppointment = (input: BookAppointmentInput) =>
@@ -151,7 +182,25 @@ export const bookAppointment = (input: BookAppointmentInput) =>
     appointment_date: input.appointmentDate,
     start_time: input.startTime,
     symptoms: input.symptoms,
-    booking_for: 'self',
+    client_request_id: input.clientRequestId ?? null,
+    ...(input.relative
+      ? {
+          booking_for: 'relative',
+          relative: {
+            full_name: input.relative.fullName,
+            relationship: input.relative.relationship,
+            phone_number: input.relative.phoneNumber,
+            national_id: input.relative.nationalId,
+            consent_confirmed: true,
+          },
+        }
+      : { booking_for: 'self' }),
+  });
+
+export const rescheduleAppointment = (appointmentId: number, appointmentDate: string, startTime: string) =>
+  post<AppointmentRead>(`/api/appointments/${appointmentId}/reschedule`, {
+    appointment_date: appointmentDate,
+    start_time: startTime,
   });
 
 export const startPayment = (appointmentId: number) => post<PaymentRead>(`/api/appointments/${appointmentId}/payment`, {});
@@ -280,3 +329,96 @@ export const addBlockedSlot = (blockDate: string, startTime: string, endTime: st
   post<BlockedSlot>('/api/doctor/blocked-slots', { block_date: blockDate, start_time: startTime, end_time: endTime, reason: reason || null });
 
 export const deleteBlockedSlot = (id: number) => del(`/api/doctor/blocked-slots/${id}`);
+
+export const fetchAdminBlockedSlots = (doctorId: number, dateFrom: string, dateTo: string) =>
+  get<BlockedSlot[]>(`/api/admin/doctors/${doctorId}/blocked-slots?date_from=${dateFrom}&date_to=${dateTo}`);
+
+export const addAdminBlockedSlot = (doctorId: number, blockDate: string, startTime: string, endTime: string, reason: string) =>
+  post<BlockedSlot>(`/api/admin/doctors/${doctorId}/blocked-slots`, { block_date: blockDate, start_time: startTime, end_time: endTime, reason: reason || null });
+
+export const deleteAdminBlockedSlot = (doctorId: number, id: number) => del(`/api/admin/doctors/${doctorId}/blocked-slots/${id}`);
+
+export interface DoctorReview {
+  id: number;
+  appointment_id: number;
+  doctor_id: number;
+  score: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const fetchDoctorReviews = (doctorId: number, opts: { limit?: number } = {}) =>
+  get<DoctorReview[]>(`/api/doctors/${doctorId}/reviews?limit=${opts.limit ?? 50}`);
+
+export interface MedicalRecord {
+  id: number;
+  appointment_id: number;
+  doctor_id: number;
+  clinical_notes: string;
+  diagnosis: string | null;
+  prescription: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MedicalRecordInput {
+  clinical_notes: string;
+  diagnosis: string | null;
+  prescription: string | null;
+}
+
+/** Resolves to null when no record has been written yet (backend answers 404). */
+export async function fetchMedicalRecord(appointmentId: number): Promise<MedicalRecord | null> {
+  try {
+    return await get<MedicalRecord>(`/api/appointments/${appointmentId}/medical-record`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export const saveMedicalRecord = (appointmentId: number, input: MedicalRecordInput) =>
+  put<MedicalRecord>(`/api/doctor/appointments/${appointmentId}/medical-record`, input);
+
+export interface RefundTierInput {
+  actor_role: 'patient' | 'provider';
+  min_minutes_before: number;
+  refund_percentage: number;
+}
+
+export interface RefundTier extends RefundTierInput {
+  id: number;
+}
+
+export interface CancellationPolicy {
+  id: number;
+  patient_cancel_cutoff_minutes: number;
+  provider_cancel_cutoff_minutes: number | null;
+  is_active: boolean;
+  created_by_sub: string;
+  effective_from: string;
+  refund_tiers: RefundTier[];
+}
+
+export interface CancellationPolicyInput {
+  patient_cancel_cutoff_minutes: number;
+  provider_cancel_cutoff_minutes: number | null;
+  refund_tiers: RefundTierInput[];
+}
+
+/** Resolves to null when no policy has ever been activated yet (backend answers 503). */
+export async function fetchActiveCancellationPolicy(): Promise<CancellationPolicy | null> {
+  try {
+    return await get<CancellationPolicy>('/api/admin/cancellation-policies/active');
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503) return null;
+    throw err;
+  }
+}
+
+export const createCancellationPolicy = (input: CancellationPolicyInput) =>
+  post<CancellationPolicy>('/api/admin/cancellation-policies', input);
+
+export const activateCancellationPolicy = (policyId: number) =>
+  post<CancellationPolicy>(`/api/admin/cancellation-policies/${policyId}/activate`, {});
