@@ -170,6 +170,13 @@ def require_doctor_profile(session: Session, current_user: CurrentUser):
     return doctor
 
 
+def require_doctor_by_id(session: Session, doctor_id: int):
+    doctor = get_doctor(session, doctor_id)
+    if doctor is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
+    return doctor
+
+
 @router.put(
     "/doctor/schedules/{work_date}",
     response_model=WorkingDayRead,
@@ -275,6 +282,55 @@ def unblock_slot(
         require_doctor_profile(session, current_user),
         blocked_slot_id,
     )
+
+
+@router.post(
+    "/admin/doctors/{doctor_id}/blocked-slots",
+    response_model=BlockedSlotRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_block_slot(
+    doctor_id: int,
+    data: BlockedSlotPut,
+    session: DatabaseSession,
+    _: AdminUser,
+):
+    if data.block_date < datetime.now(APP_TIMEZONE).date():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Past date")
+    return add_blocked_slot(session, require_doctor_by_id(session, doctor_id), data)
+
+
+@router.get(
+    "/admin/doctors/{doctor_id}/blocked-slots",
+    response_model=list[BlockedSlotRead],
+)
+def admin_read_blocked_slots(
+    doctor_id: int,
+    session: DatabaseSession,
+    _: AdminUser,
+    date_from: Annotated[date | None, Query()] = None,
+    date_to: Annotated[date | None, Query()] = None,
+):
+    date_from = date_from or datetime.now(APP_TIMEZONE).date()
+    date_to = date_to or date_from + timedelta(days=30)
+    if date_to < date_from or date_to > date_from + timedelta(days=90):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid date range")
+    return list_blocked_slots(
+        session, require_doctor_by_id(session, doctor_id), date_from, date_to
+    )
+
+
+@router.delete(
+    "/admin/doctors/{doctor_id}/blocked-slots/{blocked_slot_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def admin_unblock_slot(
+    doctor_id: int,
+    blocked_slot_id: int,
+    session: DatabaseSession,
+    _: AdminUser,
+):
+    delete_blocked_slot(session, require_doctor_by_id(session, doctor_id), blocked_slot_id)
 
 
 @router.get("/doctor/schedules", response_model=list[WorkingDayRead])

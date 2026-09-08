@@ -1,6 +1,14 @@
 from datetime import date, datetime, time
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class SpecialtyRead(BaseModel):
@@ -37,13 +45,21 @@ class DoctorSummary(BaseModel):
     specialty: SpecialtyRead
     facility: FacilityRead | None
     clinic_name: str | None
+    professional_title: str | None
     years_experience: int
+    slot_duration_minutes: int
     rating: float
     avatar_url: str | None
 
 
 class DoctorDetail(DoctorSummary):
     bio: str | None
+    certificates: list[str]
+
+    @field_validator("certificates", mode="before")
+    @classmethod
+    def _default_certificates(cls, value: list[str] | None) -> list[str]:
+        return value or []
 
 
 class DoctorProfilePut(BaseModel):
@@ -54,7 +70,12 @@ class DoctorProfilePut(BaseModel):
     display_name: str = Field(min_length=1, max_length=100)
     bio: str | None = Field(default=None, max_length=5000)
     clinic_name: str | None = Field(default=None, max_length=150)
+    professional_title: str | None = Field(default=None, max_length=150)
+    certificates: list[Annotated[str, Field(max_length=200)]] = Field(
+        default_factory=list, max_length=20
+    )
     years_experience: int = Field(default=0, ge=0, le=80)
+    slot_duration_minutes: Literal[30, 60] = Field(default=30)
     avatar_url: HttpUrl | None = Field(default=None, max_length=500)
 
 

@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     Date,
     DateTime,
@@ -50,6 +51,9 @@ class DoctorProfile(Base):
     __table_args__ = (
         CheckConstraint("years_experience >= 0", name="years_experience_nonnegative"),
         CheckConstraint("rating >= 0 AND rating <= 5", name="rating_range"),
+        CheckConstraint(
+            "slot_duration_minutes IN (30, 60)", name="slot_duration_allowed"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -64,7 +68,10 @@ class DoctorProfile(Base):
     display_name: Mapped[str] = mapped_column(String(100), index=True)
     bio: Mapped[str | None] = mapped_column(Text)
     clinic_name: Mapped[str | None] = mapped_column(String(150))
+    professional_title: Mapped[str | None] = mapped_column(String(150))
+    certificates: Mapped[list | None] = mapped_column(JSON)
     years_experience: Mapped[int] = mapped_column(default=0)
+    slot_duration_minutes: Mapped[int] = mapped_column(default=30)
     rating: Mapped[Decimal] = mapped_column(Numeric(2, 1), default=0)
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(
