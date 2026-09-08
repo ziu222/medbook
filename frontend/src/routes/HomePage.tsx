@@ -4,7 +4,7 @@ import { HeroSection } from './home/HeroSection';
 import { SpecialtiesSection } from './home/SpecialtiesSection';
 import { DoctorTeamSection } from './home/DoctorTeamSection';
 import { StatsSection } from './home/StatsSection';
-import { InfrastructureSection } from './home/InfrastructureSection';
+import { WhyMedBookSection } from './home/WhyMedBookSection';
 import { FeedbackFormSection } from './home/FeedbackFormSection';
 import { StepsSection } from './home/StepsSection';
 
@@ -22,7 +22,7 @@ export function HomePage({ authed, onNavigate }: HomePageProps) {
         <SpecialtiesSection />
         <DoctorTeamSection />
         <StatsSection />
-        <InfrastructureSection />
+        <WhyMedBookSection />
         <FeedbackFormSection />
         <StepsSection />
       </main>

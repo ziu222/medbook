@@ -67,11 +67,43 @@ def test_doctor_can_create_and_read_own_profile() -> None:
                 "bio": "Chuyên điều trị tim mạch.",
                 "clinic_name": "MedBook Clinic",
                 "years_experience": 10,
+                "professional_title": "Thạc sĩ, Bác sĩ CKI",
+                "certificates": ["Chứng chỉ hành nghề Nội tim mạch"],
             },
         )
         assert response.status_code == 200
         assert response.json()["display_name"] == "Bác sĩ An"
         assert response.json()["rating"] == 0
+        assert response.json()["slot_duration_minutes"] == 30
+        assert response.json()["professional_title"] == "Thạc sĩ, Bác sĩ CKI"
+
+        profile_detail = client.get("/api/doctor/me")
+        assert profile_detail.json()["certificates"] == [
+            "Chứng chỉ hành nghề Nội tim mạch"
+        ]
+
+        hourly_slots = client.put(
+            "/api/doctor/me",
+            json={
+                "specialty_id": specialty_id,
+                "display_name": "Bác sĩ An",
+                "years_experience": 10,
+                "slot_duration_minutes": 60,
+            },
+        )
+        assert hourly_slots.status_code == 200
+        assert hourly_slots.json()["slot_duration_minutes"] == 60
+
+        invalid_duration = client.put(
+            "/api/doctor/me",
+            json={
+                "specialty_id": specialty_id,
+                "display_name": "Bác sĩ An",
+                "years_experience": 10,
+                "slot_duration_minutes": 45,
+            },
+        )
+        assert invalid_duration.status_code == 422
 
         profile = client.get("/api/doctor/me")
         assert profile.status_code == 200

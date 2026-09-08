@@ -2,14 +2,26 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
-import { ApiError, bookAppointment, fetchAvailability, fetchDoctor, type AvailabilitySlot, type DoctorDetail } from '../lib/api';
+import {
+  ApiError,
+  bookAppointment,
+  fetchAvailability,
+  fetchDoctor,
+  fetchDoctorReviews,
+  RELATIONSHIP_LABELS,
+  type AvailabilitySlot,
+  type DoctorDetail,
+  type DoctorReview,
+  type Relationship,
+} from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
 import { toIsoDate } from '../lib/date';
-import { doctorReviewCount, doctorReviews } from '../lib/mockContent';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
 
-const HOSPITAL_ADDRESS = '786 Nguyễn Kiệm, TP. Hồ Chí Minh';
+const RELATIONSHIP_OPTIONS = Object.entries(RELATIONSHIP_LABELS) as [Relationship, string][];
+
+const HOSPITAL_ADDRESS = '12 Đường Sức Khỏe, Phường Bình Thạnh, TP. Hồ Chí Minh';
 
 interface DoctorProfilePageProps {
   doctorId: number;
@@ -132,7 +144,9 @@ function ratingBars(rating: number): { star: number; percent: number }[] {
   }));
 }
 
-function ReviewsCard({ rating }: { rating: number }) {
+const REVIEW_DATE_FORMAT = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function ReviewsCard({ rating, reviews }: { rating: number; reviews: DoctorReview[] | null }) {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '22px', padding: '30px' }}>
       <h2 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 22px' }}>Đánh giá từ bệnh nhân</h2>
@@ -140,7 +154,7 @@ function ReviewsCard({ rating }: { rating: number }) {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '-1.5px', lineHeight: 1 }}>{rating.toFixed(1)}</div>
           <div style={{ color: 'var(--gold)', fontSize: '15px', letterSpacing: '2px' }}>{'★'.repeat(Math.round(rating))}</div>
-          <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '4px' }}>{doctorReviewCount} đánh giá</div>
+          <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '4px' }}>{reviews?.length ?? 0} đánh giá</div>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {ratingBars(rating).map(({ star, percent }) => (
@@ -155,46 +169,61 @@ function ReviewsCard({ rating }: { rating: number }) {
         </div>
       </div>
       <div style={{ height: '1px', background: 'var(--line)', marginBottom: '20px' }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {doctorReviews.map((review, i) => (
-          <div key={review.author} style={{ display: 'flex', gap: '13px' }}>
-            <div
-              style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: avatarColorFor(i + 1),
-                color: '#fff',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 800,
-                fontSize: '15px',
-                flexShrink: 0,
-              }}
-            >
-              {initialsFor(review.author)}
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <b style={{ fontSize: '15.5px' }}>{review.author}</b>
-                <span style={{ color: 'var(--gold)', fontSize: '12px' }}>{'★'.repeat(review.stars)}</span>
+      {!reviews || reviews.length === 0 ? (
+        <div style={{ color: 'var(--muted)', fontSize: '14.5px', textAlign: 'center', padding: '10px 0' }}>
+          {reviews === null ? 'Đang tải đánh giá...' : 'Chưa có đánh giá nào cho bác sĩ này.'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {reviews.map((review) => (
+            <div key={review.id} style={{ display: 'flex', gap: '13px' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'var(--tint2)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+                </svg>
               </div>
-              <p style={{ margin: '4px 0 0', color: 'var(--ink2)', fontSize: '15px', lineHeight: 1.55 }}>{review.body}</p>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <b style={{ fontSize: '14.5px', color: 'var(--muted)' }}>Bệnh nhân MedBook</b>
+                  <span style={{ color: 'var(--gold)', fontSize: '12px' }}>{'★'.repeat(review.score)}</span>
+                  <span style={{ color: 'var(--faint)', fontSize: '12.5px' }}>· {REVIEW_DATE_FORMAT.format(new Date(review.created_at))}</span>
+                </div>
+                {review.comment && <p style={{ margin: '4px 0 0', color: 'var(--ink2)', fontSize: '15px', lineHeight: 1.55 }}>{review.comment}</p>}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfilePageProps) {
   const [doctor, setDoctor] = useState<DoctorDetail | null>(null);
+  const [reviews, setReviews] = useState<DoctorReview[] | null>(null);
+  const [bookingFor, setBookingFor] = useState<'self' | 'relative'>('self');
+  const [relativeFullName, setRelativeFullName] = useState('');
+  const [relativeRelationship, setRelativeRelationship] = useState<Relationship>('father');
+  const [relativePhone, setRelativePhone] = useState('');
+  const [relativeNationalId, setRelativeNationalId] = useState('');
+  const [relativeConsent, setRelativeConsent] = useState(false);
   const [dates] = useState(() => upcomingDates(4));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
   const [symptoms, setSymptoms] = useState('');
+  const [clientRequestId, setClientRequestId] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsProfile, setNeedsProfile] = useState(false);
@@ -205,6 +234,10 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
     fetchDoctor(doctorId)
       .then(setDoctor)
       .catch(() => setDoctor(null));
+    setReviews(null);
+    fetchDoctorReviews(doctorId)
+      .then(setReviews)
+      .catch(() => setReviews([]));
   }, [doctorId]);
 
   useEffect(() => {
@@ -215,7 +248,20 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
       .catch(() => setSlots([]));
   }, [doctorId, selectedDate]);
 
-  const canConfirm = selectedDate !== null && selectedSlot !== null && symptoms.trim().length > 0 && !submitting;
+  // A fresh id per slot picked = a fresh booking attempt; retrying the same attempt (double
+  // click, a dropped response) reuses it so the backend can replay instead of double-booking.
+  useEffect(() => {
+    setClientRequestId(crypto.randomUUID());
+  }, [selectedDate, selectedSlot]);
+
+  const relativeValid =
+    bookingFor === 'self' ||
+    (relativeFullName.trim().length > 0 &&
+      /^\+?[0-9]{8,15}$/.test(relativePhone.trim()) &&
+      /^[0-9]{12}$/.test(relativeNationalId.trim()) &&
+      relativeConsent);
+
+  const canConfirm = selectedDate !== null && selectedSlot !== null && symptoms.trim().length > 0 && relativeValid && !submitting;
 
   const handleConfirm = async () => {
     if (!authed) {
@@ -231,6 +277,16 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
         appointmentDate: toIsoDate(selectedDate),
         startTime: selectedSlot.start_time,
         symptoms: symptoms.trim(),
+        clientRequestId,
+        relative:
+          bookingFor === 'relative'
+            ? {
+                fullName: relativeFullName.trim(),
+                relationship: relativeRelationship,
+                phoneNumber: relativePhone.trim(),
+                nationalId: relativeNationalId.trim(),
+              }
+            : undefined,
       });
       onNavigate('appointments');
     } catch (err) {
@@ -301,6 +357,7 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
                       {checkFilledIcon}
                     </div>
                     <div style={{ color: 'var(--muted)', fontSize: '16px', margin: '6px 0 16px' }}>
+                      {doctor.professional_title && <>{doctor.professional_title} · </>}
                       Chuyên khoa {doctor.specialty.name} · {doctor.years_experience} năm kinh nghiệm
                     </div>
                     <div style={{ display: 'flex', gap: '26px' }}>
@@ -310,7 +367,7 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink2)' }}>
                         {reviewIcon}
-                        <b>{doctorReviewCount}</b> đánh giá
+                        <b>{reviews?.length ?? 0}</b> đánh giá
                       </div>
                       {doctor.clinic_name && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink2)' }}>
@@ -339,18 +396,32 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
                         cursor: 'pointer',
                       }}
                     >
-                      {key === 'reviews' ? `${label} (${doctorReviewCount})` : label}
+                      {key === 'reviews' ? `${label} (${reviews?.length ?? 0})` : label}
                     </div>
                   ))}
                 </div>
 
                 {tab === 'experience' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-                    <InfoTile icon={experiencePath} label="Số năm kinh nghiệm" value={`${doctor.years_experience} năm`} />
-                    <InfoTile icon={specialtyPath} label="Chuyên khoa" value={doctor.specialty.name} />
-                    <InfoTile icon={buildingPath} label="Nơi công tác" value={doctor.clinic_name ?? 'Bệnh viện Quân y 175'} />
-                    <InfoTile icon={starPath} label="Đánh giá trung bình" value={`${doctor.rating.toFixed(1)} / 5`} />
-                  </div>
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                      <InfoTile icon={experiencePath} label="Số năm kinh nghiệm" value={`${doctor.years_experience} năm`} />
+                      <InfoTile icon={specialtyPath} label="Chuyên khoa" value={doctor.specialty.name} />
+                      <InfoTile icon={buildingPath} label="Nơi công tác" value={doctor.clinic_name ?? 'Đang cập nhật'} />
+                      <InfoTile icon={starPath} label="Đánh giá trung bình" value={`${doctor.rating.toFixed(1)} / 5`} />
+                    </div>
+                    {doctor.certificates.length > 0 && (
+                      <div style={{ marginTop: '18px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '14.5px', marginBottom: '10px' }}>Chứng chỉ</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                          {doctor.certificates.map((cert) => (
+                            <span key={cert} style={{ padding: '8px 14px', borderRadius: '11px', background: 'var(--tint)', color: 'var(--brand-d)', fontWeight: 600, fontSize: '13.5px' }}>
+                              {cert}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
                     {doctor.bio && <p style={{ fontSize: '16px', lineHeight: 1.7, color: 'var(--ink2)', margin: '0 0 22px' }}>{doctor.bio}</p>}
@@ -364,7 +435,7 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
               </div>
 
               <div ref={reviewsRef}>
-                <ReviewsCard rating={doctor.rating} />
+                <ReviewsCard rating={doctor.rating} reviews={reviews} />
               </div>
             </div>
 
@@ -440,6 +511,70 @@ export function DoctorProfilePage({ doctorId, authed, onNavigate }: DoctorProfil
 
               {selectedSlot && (
                 <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '14.5px', marginBottom: '8px' }}>Đặt lịch cho</div>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                    {(['self', 'relative'] as const).map((option) => (
+                      <div
+                        key={option}
+                        onClick={() => setBookingFor(option)}
+                        className="mood-pill"
+                        style={{
+                          flex: 1,
+                          textAlign: 'center',
+                          padding: '10px 4px',
+                          borderRadius: '11px',
+                          background: bookingFor === option ? 'var(--brand-grad)' : '#fff',
+                          border: bookingFor === option ? 'none' : '1.5px solid var(--line)',
+                          color: bookingFor === option ? '#fff' : 'var(--ink2)',
+                          fontWeight: 700,
+                          fontSize: '13.5px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option === 'self' ? 'Bản thân' : 'Người khác'}
+                      </div>
+                    ))}
+                  </div>
+
+                  {bookingFor === 'relative' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                      <input
+                        value={relativeFullName}
+                        onChange={(e) => setRelativeFullName(e.target.value)}
+                        placeholder="Họ tên người được đặt hộ"
+                        style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: '11px', outline: 'none', padding: '11px 13px', fontSize: '14px' }}
+                      />
+                      <select
+                        value={relativeRelationship}
+                        onChange={(e) => setRelativeRelationship(e.target.value as Relationship)}
+                        style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: '11px', outline: 'none', padding: '11px 13px', fontSize: '14px' }}
+                      >
+                        {RELATIONSHIP_OPTIONS.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            Mối quan hệ: {label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={relativePhone}
+                        onChange={(e) => setRelativePhone(e.target.value)}
+                        placeholder="Số điện thoại"
+                        style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: '11px', outline: 'none', padding: '11px 13px', fontSize: '14px' }}
+                      />
+                      <input
+                        value={relativeNationalId}
+                        onChange={(e) => setRelativeNationalId(e.target.value)}
+                        placeholder="Số CCCD (12 số)"
+                        maxLength={12}
+                        style={{ width: '100%', border: '1.5px solid var(--line)', borderRadius: '11px', outline: 'none', padding: '11px 13px', fontSize: '14px' }}
+                      />
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: 'var(--ink2)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={relativeConsent} onChange={(e) => setRelativeConsent(e.target.checked)} style={{ marginTop: '2px' }} />
+                        Tôi xác nhận đã được người này đồng ý cho đặt lịch khám hộ.
+                      </label>
+                    </div>
+                  )}
+
                   <div style={{ fontWeight: 700, fontSize: '14.5px', marginBottom: '8px' }}>Triệu chứng</div>
                   <textarea
                     value={symptoms}

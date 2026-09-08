@@ -32,6 +32,7 @@ class AppointmentCreateBase(BaseModel):
     appointment_date: date
     start_time: time
     symptoms: str = Field(min_length=1, max_length=2000)
+    client_request_id: str | None = Field(default=None, max_length=64)
 
 
 class SelfAppointmentCreate(AppointmentCreateBase):
@@ -54,6 +55,13 @@ class AvailabilitySlot(BaseModel):
     end_time: time
 
 
+class RescheduleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    appointment_date: date
+    start_time: time
+
+
 class AppointmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +77,7 @@ class AppointmentRead(BaseModel):
     start_time: time
     end_time: time
     status: AppointmentStatus
+    reschedule_count: int
     created_at: datetime
 
 

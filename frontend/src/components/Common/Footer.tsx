@@ -1,4 +1,4 @@
-const INTRO_LINKS = ['Tổng quan Bệnh viện', 'Những cột mốc đáng nhớ', 'Cơ sở vật chất', 'Các danh hiệu cao quý', 'Đội ngũ Bác sĩ'];
+const INTRO_LINKS = ['Về MedBook', 'Đối tác phòng khám', 'Tuyển dụng', 'Đội ngũ Bác sĩ'];
 
 const UTILITY_LINKS = [
   'Lịch khám bệnh',
@@ -47,7 +47,7 @@ function SocialIcon({ label }: { label: string }) {
   );
 }
 
-function HospitalLogoMark() {
+function BrandMark() {
   return (
     <div
       style={{
@@ -60,10 +60,7 @@ function HospitalLogoMark() {
         flexShrink: 0,
       }}
     >
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5Z" fill="#06984F" />
-        <path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-      </svg>
+      <img src="/favicon.svg" alt="" style={{ width: '26px', height: '26px' }} />
     </div>
   );
 }
@@ -75,10 +72,13 @@ export function Footer() {
         {/* top row: logo + newsletter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <HospitalLogoMark />
+            <BrandMark />
             <div style={{ lineHeight: 1.25 }}>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', letterSpacing: '.5px' }}>MILITARY HOSPITAL</div>
-              <div style={{ fontSize: '13.5px', color: '#9CC3B1', letterSpacing: '.3px' }}>BỆNH VIỆN QUÂN Y 175</div>
+              <div style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '.3px' }}>
+                <span style={{ color: '#fff' }}>Med</span>
+                <span style={{ color: '#5fe0b3' }}>Book</span>
+              </div>
+              <div style={{ fontSize: '13.5px', color: '#9CC3B1', letterSpacing: '.3px' }}>Nền tảng đặt lịch khám bệnh</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
@@ -124,11 +124,11 @@ export function Footer() {
             <div style={{ fontWeight: 800, fontSize: '15px', color: '#fff', marginBottom: '16px' }}>Liên hệ</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', fontSize: '14px', lineHeight: 1.5, color: '#BDD8CB' }}>
               <div>
-                <b style={{ color: '#fff', fontSize: '15px' }}>1900 1175</b>
+                <b style={{ color: '#fff', fontSize: '15px' }}>1900 8888</b>
               </div>
-              <div>info@bvqy175.vn</div>
-              <div>cskh@bvqy175.vn</div>
-              <div>786 Nguyễn Kiệm, Phường Hạnh Thông, TP. Hồ Chí Minh</div>
+              <div>info@medbook.vn</div>
+              <div>cskh@medbook.vn</div>
+              <div>12 Đường Sức Khỏe, Phường Bình Thạnh, TP. Hồ Chí Minh</div>
             </div>
           </div>
 
@@ -204,10 +204,7 @@ export function Footer() {
               Điều khoản sử dụng website
             </span>
           </div>
-          <div style={{ fontSize: '13px', color: '#8FBBA6', maxWidth: '720px' }}>
-            Bản quyền thuộc về Bệnh viện Quân y 175 © 2026. Giấy phép hoạt động Trang thông tin điện tử trên Internet số
-            319/QĐ-CT do Tổng cục Chính trị cấp ngày 26/01/2026.
-          </div>
+          <div style={{ fontSize: '13px', color: '#8FBBA6', maxWidth: '720px' }}>Bản quyền thuộc về MedBook © 2026.</div>
         </div>
       </div>
     </footer>

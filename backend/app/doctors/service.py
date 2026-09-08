@@ -133,6 +133,17 @@ def put_doctor_profile(
         profile = DoctorProfile(cognito_sub=subject, **values)
         session.add(profile)
     else:
+        if profile.slot_duration_minutes != data.slot_duration_minutes and session.scalar(
+            select(Appointment.id).where(
+                Appointment.doctor_id == profile.id,
+                Appointment.appointment_date >= date.today(),
+                Appointment.status.in_(("pending", "confirmed")),
+            )
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Cannot change slot duration with upcoming active appointments",
+            )
         for field, value in values.items():
             setattr(profile, field, value)
 

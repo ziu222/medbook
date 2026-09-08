@@ -12,6 +12,7 @@ from app.appointments.schemas import (
     AvailabilitySlot,
     MedicalRecordPut,
     MedicalRecordRead,
+    RescheduleRequest,
 )
 from app.appointments.service import (
     complete_appointment,
@@ -22,6 +23,7 @@ from app.appointments.service import (
     list_doctor_appointments,
     list_patient_appointments,
     put_medical_record,
+    reschedule_appointment,
 )
 from app.core.auth import CurrentUser, get_current_user
 from app.core.database import get_session
@@ -105,6 +107,19 @@ def read_appointment(
         current_user.subject,
         current_user.groups,
     )
+
+
+@router.post(
+    "/appointments/{appointment_id}/reschedule",
+    response_model=AppointmentRead,
+)
+def reschedule_my_appointment(
+    appointment_id: int,
+    data: RescheduleRequest,
+    session: DatabaseSession,
+    current_user: PatientUser,
+):
+    return reschedule_appointment(session, appointment_id, current_user.subject, data)
 
 
 @router.get(

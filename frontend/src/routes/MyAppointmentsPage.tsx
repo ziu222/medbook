@@ -5,16 +5,23 @@ import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { Modal } from '../components/Common/Modal';
 import {
   ApiError,
+  RELATIONSHIP_LABELS,
   cancelPatientAppointment,
+  fetchAvailability,
   fetchDoctors,
+  fetchMedicalRecord,
   fetchMyAppointments,
+  rescheduleAppointment,
   startPayment,
   submitDoctorReview,
   type AppointmentRead,
+  type AvailabilitySlot,
   type DoctorSummary,
+  type MedicalRecord,
 } from '../lib/api';
 import { redirectToLogin } from '../lib/auth';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
+import { toIsoDate } from '../lib/date';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
 
 interface MyAppointmentsPageProps {
@@ -125,6 +132,153 @@ function CancelModal({ open, onClose, onConfirm }: { open: boolean; onClose: () 
   );
 }
 
+const RESCHEDULE_DATE_CHOICES = 6;
+
+function upcomingDates(count: number): Date[] {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i + 1);
+    return d;
+  });
+}
+
+function RescheduleModal({
+  open,
+  onClose,
+  doctorId,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  doctorId: number;
+  onConfirm: (appointmentDate: string, startTime: string) => Promise<void>;
+}) {
+  const [dates] = useState(() => upcomingDates(RESCHEDULE_DATE_CHOICES));
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedDate(null);
+      setSelectedSlot(null);
+      setError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    setSelectedSlot(null);
+    fetchAvailability(doctorId, toIsoDate(selectedDate))
+      .then(setSlots)
+      .catch(() => setSlots([]));
+  }, [doctorId, selectedDate]);
+
+  const handleSubmit = async () => {
+    if (!selectedDate || !selectedSlot) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm(toIsoDate(selectedDate), selectedSlot.start_time);
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Đổi lịch thất bại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open={open} title="Đổi lịch hẹn" onClose={onClose}>
+      <div style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '14px' }}>
+        Chọn khung giờ mới. Bạn chỉ được đổi lịch miễn phí 1 lần cho mỗi lịch hẹn.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+        {dates.map((d) => {
+          const isSelected = selectedDate !== null && toIsoDate(d) === toIsoDate(selectedDate);
+          return (
+            <div
+              key={toIsoDate(d)}
+              onClick={() => setSelectedDate(d)}
+              className="mood-pill"
+              style={{
+                textAlign: 'center',
+                padding: '9px 4px',
+                borderRadius: '10px',
+                background: isSelected ? 'var(--brand-grad)' : '#fff',
+                border: isSelected ? 'none' : '1.5px solid var(--line)',
+                color: isSelected ? '#fff' : 'var(--ink2)',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 700,
+              }}
+            >
+              {String(d.getDate()).padStart(2, '0')}/{String(d.getMonth() + 1).padStart(2, '0')}
+            </div>
+          );
+        })}
+      </div>
+
+      {selectedDate && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '18px' }}>
+          {slots.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', color: 'var(--muted)', fontSize: '13.5px' }}>Không có khung giờ trống ngày này.</div>
+          ) : (
+            slots.map((slot) => {
+              const isSelected = selectedSlot?.start_time === slot.start_time;
+              return (
+                <div
+                  key={slot.start_time}
+                  onClick={() => setSelectedSlot(slot)}
+                  className="mood-pill"
+                  style={{
+                    textAlign: 'center',
+                    padding: '9px 4px',
+                    borderRadius: '10px',
+                    background: isSelected ? 'var(--brand-grad)' : '#fff',
+                    border: isSelected ? 'none' : '1.5px solid var(--line)',
+                    color: isSelected ? '#fff' : 'var(--ink2)',
+                    fontWeight: 600,
+                    fontSize: '13.5px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {slot.start_time.slice(0, 5)}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {error && <div style={{ color: '#c0492f', fontSize: '13.5px', marginBottom: '14px' }}>{error}</div>}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <span onClick={onClose} className="link-hover" style={{ padding: '11px 18px', borderRadius: '11px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', color: 'var(--ink2)' }}>
+          Đóng
+        </span>
+        <span
+          onClick={!busy && selectedSlot ? handleSubmit : undefined}
+          className={!busy && selectedSlot ? 'btn-hover' : undefined}
+          style={{
+            padding: '11px 20px',
+            borderRadius: '11px',
+            fontWeight: 700,
+            fontSize: '14px',
+            cursor: !busy && selectedSlot ? 'pointer' : 'not-allowed',
+            background: !busy && selectedSlot ? 'var(--brand-grad)' : 'var(--line)',
+            color: !busy && selectedSlot ? '#fff' : 'var(--faint)',
+          }}
+        >
+          {busy ? 'Đang xử lý...' : 'Xác nhận đổi lịch'}
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
 function ReviewModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: (score: number, comment: string) => void }) {
   const [score, setScore] = useState(5);
   const [comment, setComment] = useState('');
@@ -205,6 +359,52 @@ function PaymentSuccessModal({
   );
 }
 
+function MedicalRecordModal({ open, onClose, appointmentId }: { open: boolean; onClose: () => void; appointmentId: number }) {
+  const [record, setRecord] = useState<MedicalRecord | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!open) return;
+    setRecord(undefined);
+    fetchMedicalRecord(appointmentId)
+      .then(setRecord)
+      .catch(() => setRecord(null));
+  }, [open, appointmentId]);
+
+  return (
+    <Modal open={open} title="Hồ sơ khám" onClose={onClose}>
+      {record === undefined ? (
+        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Đang tải...</div>
+      ) : record === null ? (
+        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Bác sĩ chưa cập nhật hồ sơ khám cho lịch hẹn này.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px' }}>Ghi chú khám</div>
+            <div style={{ color: 'var(--ink2)', fontSize: '14.5px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{record.clinical_notes}</div>
+          </div>
+          {record.diagnosis && (
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px' }}>Chẩn đoán</div>
+              <div style={{ color: 'var(--ink2)', fontSize: '14.5px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{record.diagnosis}</div>
+            </div>
+          )}
+          {record.prescription && (
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '6px' }}>Đơn thuốc</div>
+              <div style={{ color: 'var(--ink2)', fontSize: '14.5px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{record.prescription}</div>
+            </div>
+          )}
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <span onClick={onClose} className="link-hover" style={{ padding: '11px 18px', borderRadius: '11px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', color: 'var(--ink2)' }}>
+          Đóng
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
 function AppointmentCard({
   appointment,
   doctor,
@@ -212,6 +412,7 @@ function AppointmentCard({
   onSelectDoctor,
   onPaid,
   onCancelled,
+  onRescheduled,
   cancelNote,
   reviewedScore,
   onReviewed,
@@ -222,6 +423,7 @@ function AppointmentCard({
   onSelectDoctor: (id: number) => void;
   onPaid: (appointmentId: number) => void;
   onCancelled: (appointmentId: number, note: string) => void;
+  onRescheduled: (appointment: AppointmentRead) => void;
   cancelNote: string | null;
   reviewedScore: number | null;
   onReviewed: (appointmentId: number, score: number) => void;
@@ -231,7 +433,10 @@ function AppointmentCard({
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showMedicalRecordModal, setShowMedicalRecordModal] = useState(false);
+  const canReschedule = appointment.reschedule_count < 1;
   const status = STATUS_META[appointment.status] ?? { label: appointment.status, color: 'var(--muted)', bg: 'var(--tint2)' };
   const countdown = (appointment.status === 'pending' || appointment.status === 'confirmed') ? countdownLabel(appointment.appointment_date) : null;
 
@@ -266,6 +471,11 @@ function AppointmentCard({
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleReschedule = async (appointmentDate: string, startTime: string) => {
+    const updated = await rescheduleAppointment(appointment.id, appointmentDate, startTime);
+    onRescheduled(updated);
   };
 
   const handleReview = async (score: number, comment: string) => {
@@ -354,6 +564,19 @@ function AppointmentCard({
           <span style={{ marginTop: '2px', flexShrink: 0 }}>{noteIcon}</span>
           {appointment.symptoms}
         </div>
+        {appointment.booking_for === 'relative' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{ padding: '3px 10px', borderRadius: '999px', background: 'var(--tint2)', color: 'var(--ink2)', fontWeight: 700, fontSize: '12px' }}
+            >
+              Đặt hộ
+            </span>
+            <span>
+              {appointment.patient_full_name}
+              {appointment.relationship && ` · ${RELATIONSHIP_LABELS[appointment.relationship]}`}
+            </span>
+          </div>
+        )}
       </div>
 
       {error && <div style={{ color: '#c0492f', fontSize: '13.5px', marginTop: '14px' }}>{error}</div>}
@@ -395,6 +618,24 @@ function AppointmentCard({
           >
             {paying ? 'Đang xử lý...' : 'Thanh toán ngay'}
           </div>
+          {canReschedule && (
+            <div
+              onClick={busy ? undefined : () => setShowRescheduleModal(true)}
+              className={busy ? undefined : 'btn-hover'}
+              style={{
+                padding: '12px 18px',
+                borderRadius: '12px',
+                border: '1px solid var(--line)',
+                fontWeight: 700,
+                fontSize: '14px',
+                color: 'var(--ink2)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Đổi lịch
+            </div>
+          )}
           <div
             onClick={busy ? undefined : () => setShowCancelModal(true)}
             className={busy ? undefined : 'btn-hover'}
@@ -415,27 +656,64 @@ function AppointmentCard({
       )}
 
       {appointment.status === 'confirmed' && (
-        <div
-          onClick={busy ? undefined : () => setShowCancelModal(true)}
-          className={busy ? undefined : 'btn-hover'}
-          style={{
-            marginTop: '16px',
-            textAlign: 'center',
-            padding: '11px',
-            borderRadius: '12px',
-            border: '1px solid #f3d2ca',
-            fontWeight: 700,
-            fontSize: '14px',
-            color: '#c0492f',
-            cursor: busy ? 'not-allowed' : 'pointer',
-          }}
-        >
-          Hủy lịch
+        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+          {canReschedule && (
+            <div
+              onClick={busy ? undefined : () => setShowRescheduleModal(true)}
+              className={busy ? undefined : 'btn-hover'}
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                padding: '11px',
+                borderRadius: '12px',
+                border: '1px solid var(--line)',
+                fontWeight: 700,
+                fontSize: '14px',
+                color: 'var(--ink2)',
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Đổi lịch
+            </div>
+          )}
+          <div
+            onClick={busy ? undefined : () => setShowCancelModal(true)}
+            className={busy ? undefined : 'btn-hover'}
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              padding: '11px',
+              borderRadius: '12px',
+              border: '1px solid #f3d2ca',
+              fontWeight: 700,
+              fontSize: '14px',
+              color: '#c0492f',
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Hủy lịch
+          </div>
         </div>
       )}
 
       {appointment.status === 'completed' && (
-        <div style={{ marginTop: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+          <div
+            onClick={() => setShowMedicalRecordModal(true)}
+            className="btn-hover"
+            style={{
+              textAlign: 'center',
+              padding: '11px',
+              borderRadius: '12px',
+              border: '1px solid var(--line)',
+              fontWeight: 700,
+              fontSize: '14px',
+              color: 'var(--ink2)',
+              cursor: 'pointer',
+            }}
+          >
+            Xem hồ sơ khám
+          </div>
           {reviewedScore !== null ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '1px' }}>
@@ -470,6 +748,13 @@ function AppointmentCard({
       )}
 
       <CancelModal open={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={handleCancel} />
+      <MedicalRecordModal open={showMedicalRecordModal} onClose={() => setShowMedicalRecordModal(false)} appointmentId={appointment.id} />
+      <RescheduleModal
+        open={showRescheduleModal}
+        onClose={() => setShowRescheduleModal(false)}
+        doctorId={appointment.doctor_id}
+        onConfirm={handleReschedule}
+      />
       <ReviewModal open={showReviewModal} onClose={() => setShowReviewModal(false)} onConfirm={handleReview} />
       <PaymentSuccessModal open={showSuccess} onClose={() => setShowSuccess(false)} doctorName={doctor?.display_name ?? `Bác sĩ #${appointment.doctor_id}`} appointment={appointment} />
     </div>
@@ -519,6 +804,10 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
   const handleCancelled = (appointmentId: number, note: string) => {
     setAppointments((prev) => prev.map((a) => (a.id === appointmentId ? { ...a, status: 'cancelled' } : a)));
     setCancelNotes((prev) => new Map(prev).set(appointmentId, note));
+  };
+
+  const handleRescheduled = (updated: AppointmentRead) => {
+    setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
   };
 
   const handleReviewed = (appointmentId: number, score: number) => {
@@ -601,6 +890,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       onSelectDoctor={onSelectDoctor}
                       onPaid={handlePaid}
                       onCancelled={handleCancelled}
+                      onRescheduled={handleRescheduled}
                       cancelNote={cancelNotes.get(a.id) ?? null}
                       reviewedScore={reviewedScores.get(a.id) ?? null}
                       onReviewed={handleReviewed}
@@ -619,6 +909,7 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
                       onSelectDoctor={onSelectDoctor}
                       onPaid={handlePaid}
                       onCancelled={handleCancelled}
+                      onRescheduled={handleRescheduled}
                       cancelNote={cancelNotes.get(a.id) ?? null}
                       reviewedScore={reviewedScores.get(a.id) ?? null}
                       onReviewed={handleReviewed}

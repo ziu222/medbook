@@ -74,7 +74,10 @@ export function DoctorSidebar({ active, doctorName, specialtyName, onNavigate }:
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px', marginBottom: '28px' }}>
         <img src="/favicon.svg" alt="" style={{ width: '28px', height: '28px' }} />
-        <span style={{ fontWeight: 800, fontSize: '17px' }}>MedBook</span>
+        <span style={{ fontWeight: 800, fontSize: '17px' }}>
+          <span style={{ color: '#fff' }}>Med</span>
+          <span style={{ color: '#5fe0b3' }}>Book</span>
+        </span>
       </div>
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>

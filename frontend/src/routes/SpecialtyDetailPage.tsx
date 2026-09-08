@@ -5,7 +5,6 @@ import { LoadingSpinner } from '../components/Common/LoadingSpinner';
 import { ImageSlot } from '../components/Common/ImageSlot';
 import { fetchDoctors, fetchSpecialties, type DoctorSummary, type Specialty } from '../lib/api';
 import { avatarColorFor, initialsFor } from '../lib/avatar';
-import { infraTabs } from '../lib/mockContent';
 import { BOOKING_FEE_VND, formatVnd } from '../lib/pricing';
 import { copyFor, DEPARTMENT_FUNCTIONS } from '../lib/specialtyContent';
 
@@ -17,22 +16,12 @@ interface SpecialtyDetailPageProps {
   onSelectDoctor: (id: number) => void;
 }
 
-// Hospital-level contact, from the footer. Per-department location and extension are not in the API.
+// Platform-level contact, from the footer. Per-department location and extension are not in the API.
 const CONTACT = {
-  location: '786 Nguyễn Kiệm, Phường Hạnh Thông, TP. Hồ Chí Minh',
-  phone: '1900 1175',
+  location: '12 Đường Sức Khỏe, Phường Bình Thạnh, TP. Hồ Chí Minh',
+  phone: '1900 8888',
   hours: 'Thứ 2 – Thứ 7, 07:00 – 16:30',
 };
-
-/**
- * Banner image. There is no per-department photo anywhere, so this reuses the hospital
- * infrastructure shots already in the repo and labels them as what they are — a picture of the
- * hospital, not a claim about this department's team.
- */
-function bannerFor(specialtyId: number): string {
-  const pool = infraTabs.flatMap((tab) => tab.images);
-  return pool[specialtyId % pool.length];
-}
 
 const chevron = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.5 }}>
@@ -81,7 +70,7 @@ function DoctorCard({ doctor, onOpen }: { doctor: DoctorSummary; onOpen: () => v
         </div>
         <div style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-.3px', marginTop: '6px' }}>{doctor.display_name}</div>
         <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '4px', lineHeight: 1.5 }}>
-          {doctor.clinic_name ?? 'Bệnh viện Quân y 175'} · ★ {doctor.rating.toFixed(1)}
+          {doctor.clinic_name ?? 'MedBook'} · ★ {doctor.rating.toFixed(1)}
         </div>
       </div>
     </div>
@@ -209,7 +198,7 @@ export function SpecialtyDetailPage({ slug, authed, onNavigate, onSelectSpecialt
           </div>
 
           <div style={{ height: '400px', borderRadius: '24px', overflow: 'hidden', boxShadow: 'var(--sh)', marginBottom: '52px' }}>
-            <ImageSlot src={bannerFor(specialty.id)} placeholder="Bệnh viện Quân y 175" shape="rect" fit="cover" />
+            <ImageSlot placeholder={`Khoa ${specialty.name}`} shape="rect" fit="cover" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '56px', alignItems: 'start' }}>

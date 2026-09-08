@@ -77,7 +77,7 @@ def activate_policy(session: Session, policy_id: int) -> CancellationPolicy:
     return policy
 
 
-def _assigned_policy(session: Session, appointment_id: int) -> CancellationPolicy:
+def assigned_policy(session: Session, appointment_id: int) -> CancellationPolicy:
     policy = session.scalar(
         select(CancellationPolicy)
         .join(
@@ -164,7 +164,7 @@ def cancel_appointment(
             f"Cannot cancel appointment with status {appointment.status}",
         )
 
-    policy = _assigned_policy(session, appointment.id)
+    policy = assigned_policy(session, appointment.id)
     appointment_at = datetime.combine(
         appointment.appointment_date,
         appointment.start_time,

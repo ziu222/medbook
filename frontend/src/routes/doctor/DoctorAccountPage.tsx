@@ -34,7 +34,10 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
   const [specialtyId, setSpecialtyId] = useState<number | ''>(doctor?.specialty.id ?? '');
   const [facilityId, setFacilityId] = useState<number | ''>(doctor?.facility?.id ?? '');
   const [clinicName, setClinicName] = useState(doctor?.clinic_name ?? '');
+  const [professionalTitle, setProfessionalTitle] = useState(doctor?.professional_title ?? '');
+  const [certificatesText, setCertificatesText] = useState((doctor?.certificates ?? []).join(', '));
   const [yearsExperience, setYearsExperience] = useState(String(doctor?.years_experience ?? 0));
+  const [slotDuration, setSlotDuration] = useState<30 | 60>(doctor?.slot_duration_minutes === 60 ? 60 : 30);
   const [bio, setBio] = useState(doctor?.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +62,13 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
         display_name: displayName.trim(),
         bio: bio.trim() || null,
         clinic_name: clinicName.trim() || null,
+        professional_title: professionalTitle.trim() || null,
+        certificates: certificatesText
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean),
         years_experience: Number(yearsExperience) || 0,
+        slot_duration_minutes: slotDuration,
         avatar_url: doctor?.avatar_url ?? null,
       });
       setSaved(true);
@@ -130,12 +139,36 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
 
         <div>
           <label style={labelStyle}>Tên phòng khám (hiển thị công khai)</label>
-          <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch 175" />
+          <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch An Khang" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={labelStyle}>Số năm kinh nghiệm</label>
+            <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Thời lượng 1 ca khám</label>
+            <select value={slotDuration} onChange={(e) => setSlotDuration(Number(e.target.value) === 60 ? 60 : 30)} style={fieldStyle}>
+              <option value={30}>30 phút</option>
+              <option value={60}>1 giờ</option>
+            </select>
+          </div>
         </div>
 
         <div>
-          <label style={labelStyle}>Số năm kinh nghiệm</label>
-          <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
+          <label style={labelStyle}>Level / học vị (VD: Thạc sĩ, Bác sĩ CKI...)</label>
+          <input value={professionalTitle} onChange={(e) => setProfessionalTitle(e.target.value)} style={fieldStyle} placeholder="Thạc sĩ, Bác sĩ CKII" />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Chứng chỉ (mỗi chứng chỉ cách nhau bởi dấu phẩy)</label>
+          <input
+            value={certificatesText}
+            onChange={(e) => setCertificatesText(e.target.value)}
+            style={fieldStyle}
+            placeholder="Chứng chỉ hành nghề Nội tim mạch, Chứng nhận ACLS"
+          />
         </div>
 
         <div>

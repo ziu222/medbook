@@ -25,6 +25,7 @@ def send_email(event_type: str, payload: dict) -> None:
         "payment_confirmed": "đã thanh toán",
         "appointment_reminder": "sắp diễn ra",
         "appointment_cancelled": "đã được hủy",
+        "appointment_rescheduled": "đã được đổi giờ",
     }
     subject = f"MedBook — lịch khám #{payload['appointment_id']} {labels[event_type]}"
     body = (
@@ -56,6 +57,7 @@ def handle_sqs(event: dict) -> dict:
                 "payment_confirmed",
                 "appointment_reminder",
                 "appointment_cancelled",
+                "appointment_rescheduled",
             }:
                 raise ValueError("Unsupported event type")
             send_email(event_type, payload)

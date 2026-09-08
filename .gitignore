@@ -25,6 +25,7 @@ infra/.cf_token.env
 .claude/settings.local.json
 CLAUDE.md
 AGENTS.md
+.impeccable/
 
 # misc
 *.log
