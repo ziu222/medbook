@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ApiError, createDoctorAccount, fetchFacilities, fetchSpecialties, type Facility, type Specialty } from '../../lib/api';
 import { getUserRole, redirectToLogin } from '../../lib/auth';
+import { AdminTabs } from '../../components/Common/AdminTabs';
 
 const fieldStyle: CSSProperties = {
   padding: '11px 14px',
@@ -104,7 +105,7 @@ function CreateDoctorForm() {
 
       <div>
         <label style={labelStyle}>Tên phòng khám (hiển thị công khai)</label>
-        <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch 175" />
+        <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch An Khang" />
       </div>
 
       <div>
@@ -168,6 +169,7 @@ export function AdminCreateDoctorPage({ authed }: { authed: boolean }) {
 
   return (
     <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '36px 32px' }}>
+      <AdminTabs active="/admin/tao-bac-si" />
       <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 4px' }}>Tạo tài khoản bác sĩ</h1>
       <div style={{ color: 'var(--muted)', fontSize: '14.5px', marginBottom: '22px' }}>
         Bác sĩ không tự đăng ký — quản trị viên tạo tài khoản và điền hồ sơ tại đây.
