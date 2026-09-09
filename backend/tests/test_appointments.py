@@ -323,10 +323,10 @@ def test_hourly_doctor_gets_hourly_slots_and_cannot_change_with_active_booking()
         assert booked.status_code == 201
 
         app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-            subject="doctor-sub", groups=frozenset({"doctor"})
+            subject="admin-sub", groups=frozenset({"admin"})
         )
         blocked = client.put(
-            "/api/doctor/me",
+            f"/api/admin/doctors/{doctor_id}",
             json={
                 "specialty_id": specialty_id,
                 "display_name": "Bác sĩ An",
@@ -337,7 +337,7 @@ def test_hourly_doctor_gets_hourly_slots_and_cannot_change_with_active_booking()
         assert blocked.status_code == 409
 
         unrelated_update = client.put(
-            "/api/doctor/me",
+            f"/api/admin/doctors/{doctor_id}",
             json={
                 "specialty_id": specialty_id,
                 "display_name": "Bác sĩ An 2",

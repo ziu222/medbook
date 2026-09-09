@@ -149,11 +149,12 @@ export interface DoctorProfileInput {
   avatar_url: string | null;
 }
 
-/** Also creates the profile row on first save — the backend PUT upserts. */
-export const saveMyDoctorProfile = (input: DoctorProfileInput) => put<DoctorDetail>('/api/doctor/me', input);
-
 export const createDoctorAccount = (input: DoctorProfileInput & { email: string }) =>
   post<DoctorDetail>('/api/admin/doctors', input);
+
+/** Admin-only — doctors cannot edit their own profile, only their schedule. */
+export const updateDoctorProfile = (doctorId: number, input: DoctorProfileInput) =>
+  put<DoctorDetail>(`/api/admin/doctors/${doctorId}`, input);
 
 export const fetchAvailability = (doctorId: number, date: string) =>
   get<AvailabilitySlot[]>(`/api/doctors/${doctorId}/availability?date=${date}`);

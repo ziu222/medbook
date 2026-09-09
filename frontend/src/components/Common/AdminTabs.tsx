@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 const TABS = [
   { path: '/admin/tao-bac-si', label: 'Tạo tài khoản bác sĩ' },
+  { path: '/admin/sua-bac-si', label: 'Sửa hồ sơ bác sĩ' },
   { path: '/admin/khoa-lich-bac-si', label: 'Khóa lịch bác sĩ' },
   { path: '/admin/hoan-tien', label: 'Chính sách hủy & hoàn tiền' },
 ] as const;

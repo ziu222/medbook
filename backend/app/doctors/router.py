@@ -145,19 +145,21 @@ def read_my_doctor_profile(session: DatabaseSession, current_user: DoctorUser):
     return doctor
 
 
-@router.put("/doctor/me", response_model=DoctorDetail)
-def replace_my_doctor_profile(
+@router.put("/admin/doctors/{doctor_id}", response_model=DoctorDetail)
+def replace_doctor_profile(
+    doctor_id: int,
     data: DoctorProfilePut,
     session: DatabaseSession,
-    current_user: DoctorUser,
+    _: AdminUser,
 ):
-    doctor = put_doctor_profile(session, current_user.subject, data)
-    if doctor is None:
+    doctor = require_doctor_by_id(session, doctor_id)
+    updated = put_doctor_profile(session, doctor.cognito_sub, data)
+    if updated is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Specialty not found",
         )
-    return doctor
+    return updated
 
 
 def require_doctor_profile(session: Session, current_user: CurrentUser):
