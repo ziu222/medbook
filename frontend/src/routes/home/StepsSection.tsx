@@ -1,3 +1,5 @@
+import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
+
 interface Step {
   number: number;
   title: string;
@@ -11,15 +13,21 @@ const STEPS: Step[] = [
 ];
 
 export function StepsSection() {
+  const { ref, active } = useRevealOnScroll<HTMLDivElement>();
+
   return (
     <section style={{ padding: '56px 0 20px' }}>
       <div style={{ background: 'linear-gradient(135deg, var(--sand), #fff)', border: '1px solid var(--line)', borderRadius: '26px', padding: '46px 40px' }}>
         <h2 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-.6px', textAlign: 'center', margin: '0 0 34px' }}>
           Đặt lịch chỉ với 3 bước
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '26px' }}>
-          {STEPS.map((step) => (
-            <div key={step.number} style={{ textAlign: 'center' }}>
+        <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '26px' }}>
+          {STEPS.map((step, i) => (
+            <div
+              key={step.number}
+              className={`reveal-item${active ? ' reveal-active' : ''}`}
+              style={{ textAlign: 'center', transitionDelay: `${i * 100}ms` }}
+            >
               <div
                 style={{
                   width: '56px',

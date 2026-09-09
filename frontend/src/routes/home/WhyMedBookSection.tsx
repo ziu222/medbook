@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
 
 interface Feature {
   title: string;
@@ -49,9 +50,9 @@ const FEATURES: Feature[] = [
   },
 ];
 
-function FeatureCard({ feature }: { feature: Feature }) {
+function FeatureCard({ feature, style, className }: { feature: Feature; style?: CSSProperties; className?: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '20px', padding: '26px' }}>
+    <div className={className} style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '20px', padding: '26px', ...style }}>
       <div
         style={{
           width: '48px',
@@ -74,15 +75,22 @@ function FeatureCard({ feature }: { feature: Feature }) {
 }
 
 export function WhyMedBookSection() {
+  const { ref, active } = useRevealOnScroll<HTMLDivElement>();
+
   return (
     <section style={{ padding: '64px 0 8px' }}>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h2 style={{ fontSize: '34px', fontWeight: 800, letterSpacing: '-.7px', margin: 0 }}>Vì sao chọn MedBook</h2>
         <p style={{ color: 'var(--muted)', fontSize: '16px', margin: '10px 0 0' }}>Nền tảng đặt lịch khám được xây dựng cho cả người bệnh và bác sĩ</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px' }}>
-        {FEATURES.map((feature) => (
-          <FeatureCard key={feature.title} feature={feature} />
+      <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px' }}>
+        {FEATURES.map((feature, i) => (
+          <FeatureCard
+            key={feature.title}
+            feature={feature}
+            className={`reveal-item${active ? ' reveal-active' : ''}`}
+            style={{ transitionDelay: `${i * 80}ms` }}
+          />
         ))}
       </div>
     </section>

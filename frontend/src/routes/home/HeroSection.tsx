@@ -23,6 +23,7 @@ export function HeroSection() {
       />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div
+          className="fade-up"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -38,16 +39,38 @@ export function HeroSection() {
           Nền tảng y tế số tin cậy
         </div>
 
-        <h1 style={{ fontSize: '60px', lineHeight: 1.05, fontWeight: 800, letterSpacing: '-1.6px', margin: '22px auto 0', maxWidth: '820px' }}>
+        <h1
+          className="fade-up"
+          style={{
+            fontSize: '60px',
+            lineHeight: 1.05,
+            fontWeight: 800,
+            letterSpacing: '-1.6px',
+            margin: '22px auto 0',
+            maxWidth: '820px',
+            animationDelay: '70ms',
+          }}
+        >
           Tìm đúng bác sĩ.
           <br />
           <span style={{ color: 'var(--brand)' }}>Đặt lịch trong vài phút.</span>
         </h1>
-        <p style={{ fontSize: '18.5px', lineHeight: 1.6, color: 'var(--ink2)', maxWidth: '560px', margin: '20px auto 30px' }}>
+        <p
+          className="fade-up"
+          style={{
+            fontSize: '18.5px',
+            lineHeight: 1.6,
+            color: 'var(--ink2)',
+            maxWidth: '560px',
+            margin: '20px auto 30px',
+            animationDelay: '140ms',
+          }}
+        >
           Mô tả triệu chứng — trợ lý AI gợi ý đúng chuyên khoa và bác sĩ phù hợp với bạn.
         </p>
 
         <div
+          className="fade-up"
           style={{
             display: 'flex',
             gap: '10px',
@@ -58,6 +81,7 @@ export function HeroSection() {
             maxWidth: '660px',
             margin: '0 auto',
             boxShadow: 'var(--sh)',
+            animationDelay: '210ms',
           }}
         >
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '11px', padding: '8px 14px' }}>
@@ -86,7 +110,7 @@ export function HeroSection() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '9px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
+        <div className="fade-up" style={{ display: 'flex', gap: '9px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px', animationDelay: '280ms' }}>
           {CHIPS.map((chip) =>
             chip.emphasis ? (
               <span
