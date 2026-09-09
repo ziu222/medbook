@@ -438,6 +438,16 @@ def test_idempotent_booking_active_cap_and_reschedule() -> None:
         appointment_id = first.json()["id"]
         assert first.json()["reschedule_count"] == 0
 
+        # Unpaid (pending) appointments can't be rescheduled — cancel and rebook instead.
+        unpaid_reschedule = client.post(
+            f"/api/appointments/{appointment_id}/reschedule",
+            json={"appointment_date": work_date.isoformat(), "start_time": "13:00"},
+        )
+        assert unpaid_reschedule.status_code == 409
+
+        paid = client.post(f"/api/appointments/{appointment_id}/payment")
+        assert paid.status_code == 201
+
         replay = book("08:00", client_request_id="dup-key")
         assert replay.status_code == 201
         assert replay.json()["id"] == appointment_id

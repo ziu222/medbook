@@ -33,6 +33,10 @@ ACTIVE_STATUSES = ("pending", "confirmed")
 APP_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
 # ponytail: flat caps, not admin-configurable — wire up if abuse/complaints show up.
 MAX_ACTIVE_BOOKINGS_PER_ACCOUNT = 5
+# Raising this past 1 needs a schema change first: AppointmentStatusEvent has
+# UniqueConstraint(appointment_id, to_status), so a second "moved" event for the same
+# appointment would violate it — reschedule_appointment would misreport that as
+# "Slot is not available" (its IntegrityError handler assumes only slot conflicts).
 MAX_FREE_RESCHEDULES = 1
 
 
@@ -270,7 +274,10 @@ def reschedule_appointment(
     )
     if appointment is None or appointment.booker_cognito_sub != subject:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
-    if appointment.status not in ACTIVE_STATUSES:
+    # Unpaid appointments hold their slot on borrowed time (see expire_pending_appointments) —
+    # rescheduling one would extend that hold indefinitely without ever charging for it.
+    # Cancel and rebook instead; only a paid, confirmed slot can be moved.
+    if appointment.status != "confirmed":
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Cannot reschedule appointment with status {appointment.status}",
