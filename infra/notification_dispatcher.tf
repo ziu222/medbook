@@ -57,3 +57,18 @@ resource "aws_scheduler_schedule" "appointment_expiry" {
     input    = jsonencode({ operation = "expire-pending-appointments" })
   }
 }
+
+resource "aws_scheduler_schedule" "appointment_auto_complete" {
+  name                = "${local.name}-appointment-auto-complete"
+  schedule_expression = "rate(5 minutes)"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = module.api.lambda_alias_arn
+    role_arn = aws_iam_role.notification_scheduler.arn
+    input    = jsonencode({ operation = "auto-complete-appointments" })
+  }
+}

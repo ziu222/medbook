@@ -1,7 +1,10 @@
 from datetime import UTC, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from app.appointments.models import Appointment, PatientDependent
+from app.appointments.service import auto_complete_past_appointments
 from app.cancellations.models import (
+    AppointmentPolicyAssignment,
     AppointmentStatusEvent,
     CancellationPolicy,
     RefundTier,
@@ -478,4 +481,87 @@ def test_idempotent_booking_active_cap_and_reschedule() -> None:
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
-        engine.dispose()
+
+
+def test_auto_complete_past_appointments() -> None:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    yesterday = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date() - timedelta(days=1)
+
+    with Session(engine) as session:
+        doctor = DoctorProfile(
+            cognito_sub="doctor-sub",
+            specialty=Specialty(name="Tim mạch", slug="tim-mach"),
+            display_name="Bác sĩ An",
+            years_experience=10,
+        )
+        policy = CancellationPolicy(
+            patient_cancel_cutoff_minutes=0,
+            provider_cancel_cutoff_minutes=None,
+            is_active=True,
+            created_by_sub="system",
+            effective_from=datetime.now(UTC),
+            refund_tiers=[
+                RefundTier(actor_role="patient", min_minutes_before=0, refund_percentage=0),
+                RefundTier(actor_role="provider", min_minutes_before=0, refund_percentage=100),
+            ],
+        )
+        session.add_all(
+            [
+                doctor,
+                UserProfile(
+                    cognito_sub="patient-sub",
+                    display_name="Nguyễn Văn A",
+                    phone_number="0912345678",
+                ),
+                policy,
+            ]
+        )
+        session.flush()
+        # Bypass the booking API to place an already-past confirmed appointment directly —
+        # get_available_slots would never offer a slot that's already behind "now".
+        appointment = Appointment(
+            doctor_id=doctor.id,
+            booker_cognito_sub="patient-sub",
+            booking_for="self",
+            patient_full_name="Nguyễn Văn A",
+            patient_phone_number="0912345678",
+            symptoms="Đau ngực nhẹ",
+            appointment_date=yesterday,
+            start_time=time(9, 0),
+            end_time=time(9, 30),
+            status="confirmed",
+        )
+        session.add(appointment)
+        session.flush()
+        session.add(
+            AppointmentPolicyAssignment(appointment_id=appointment.id, policy_id=policy.id)
+        )
+        session.commit()
+        appointment_id = appointment.id
+
+    with Session(engine) as session:
+        completed = auto_complete_past_appointments(session)
+        assert completed == 1
+        appointment = session.get(Appointment, appointment_id)
+        assert appointment.status == "completed"
+        events = list(
+            session.scalars(
+                select(AppointmentStatusEvent).where(
+                    AppointmentStatusEvent.appointment_id == appointment_id
+                )
+            )
+        )
+        assert len(events) == 1
+        assert events[0].to_status == "completed"
+        assert events[0].actor_role == "admin"
+
+    # Idempotent — nothing left to auto-complete on a second pass.
+    with Session(engine) as session:
+        assert auto_complete_past_appointments(session) == 0
+
+    engine.dispose()

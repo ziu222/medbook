@@ -578,3 +578,47 @@ def complete_appointment(
     session.commit()
     session.refresh(appointment)
     return appointment
+
+
+def auto_complete_past_appointments(session: Session) -> int:
+    """Auto-completes confirmed appointments whose scheduled end has passed — a doctor
+    who forgets to click "Hoàn tất" would otherwise leave it stuck in confirmed forever."""
+    now = datetime.now(APP_TIMEZONE)
+    candidates = list(
+        session.scalars(
+            select(Appointment)
+            .where(
+                Appointment.status == "confirmed",
+                Appointment.appointment_date <= now.date(),
+            )
+            .with_for_update(skip_locked=True)
+        )
+    )
+    completed = 0
+    for appointment in candidates:
+        appointment_end = datetime.combine(
+            appointment.appointment_date, appointment.end_time, tzinfo=APP_TIMEZONE
+        )
+        if now < appointment_end:
+            continue
+        assignment = session.get(AppointmentPolicyAssignment, appointment.id)
+        if assignment is None:
+            continue
+        session.add(
+            AppointmentStatusEvent(
+                appointment_id=appointment.id,
+                from_status="confirmed",
+                to_status="completed",
+                actor_sub="system",
+                actor_role="admin",
+                reason="Tự động hoàn tất do đã quá giờ khám",
+                policy_id=assignment.policy_id,
+                minutes_before=int((appointment_end - now).total_seconds() // 60),
+                refund_percentage=0,
+                refund_status="not_applicable",
+            )
+        )
+        appointment.status = "completed"
+        completed += 1
+    session.commit()
+    return completed
