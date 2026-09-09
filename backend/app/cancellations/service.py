@@ -19,7 +19,7 @@ from app.cancellations.models import (
 from app.cancellations.schemas import CancellationPolicyCreate, CancellationRead
 from app.doctors.models import DoctorProfile
 from app.payments.models import Payment
-from app.payments.service import queue_refund
+from app.payments.service import PAYMENT_TTL, queue_refund
 
 APP_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
 
@@ -173,12 +173,13 @@ def cancel_appointment(
     minutes_before = int(
         (appointment_at - datetime.now(APP_TIMEZONE)).total_seconds() // 60
     )
-    cutoff = (
-        policy.patient_cancel_cutoff_minutes
-        if actor == "patient"
-        else policy.provider_cancel_cutoff_minutes
-    )
-    if cutoff is not None and minutes_before < cutoff:
+    # Only the patient's cancellation can be blocked by a cutoff — a provider must always
+    # be able to cancel (illness, emergencies), the cutoff only shapes their refund tier below.
+    if (
+        actor == "patient"
+        and policy.patient_cancel_cutoff_minutes is not None
+        and minutes_before < policy.patient_cancel_cutoff_minutes
+    ):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Appointment is inside the cancellation cutoff",
@@ -236,6 +237,65 @@ def cancel_appointment(
     session.commit()
     session.refresh(event)
     return _cancellation_result(event, outbox.status)
+
+
+def expire_pending_appointments(session: Session) -> int:
+    """Auto-cancels 'pending' appointments left unpaid past the payment window, freeing
+    the slot. Nothing was ever charged, so there's no refund — just a courtesy notice."""
+    cutoff = datetime.now(UTC) - PAYMENT_TTL
+    stale = list(
+        session.scalars(
+            select(Appointment)
+            .where(Appointment.status == "pending", Appointment.created_at < cutoff)
+            .with_for_update(skip_locked=True)
+        )
+    )
+    for appointment in stale:
+        policy = assigned_policy(session, appointment.id)
+        appointment_at = datetime.combine(
+            appointment.appointment_date, appointment.start_time, tzinfo=APP_TIMEZONE
+        )
+        minutes_before = int(
+            (appointment_at - datetime.now(APP_TIMEZONE)).total_seconds() // 60
+        )
+        appointment.status = "cancelled"
+        session.add(
+            AppointmentStatusEvent(
+                appointment_id=appointment.id,
+                from_status="pending",
+                to_status="cancelled",
+                actor_sub="system",
+                actor_role="admin",
+                reason="Hết hạn thanh toán",
+                policy_id=policy.id,
+                minutes_before=minutes_before,
+                refund_percentage=0,
+                refund_status="not_applicable",
+            )
+        )
+        session.add(
+            NotificationOutbox(
+                event_type="appointment_cancelled",
+                aggregate_id=appointment.id,
+                payload=json.dumps(
+                    {
+                        "appointment_id": appointment.id,
+                        "booker_sub": appointment.booker_cognito_sub,
+                        "patient_full_name": appointment.patient_full_name,
+                        "appointment_date": appointment.appointment_date.isoformat(),
+                        "start_time": appointment.start_time.isoformat(),
+                        "reason": "Hết hạn thanh toán",
+                        "cancelled_by": "system",
+                        "refund_percentage": 0,
+                    },
+                    ensure_ascii=False,
+                ),
+                status="pending",
+                attempts=0,
+            )
+        )
+    session.commit()
+    return len(stale)
 
 
 def dispatch_notifications(session: Session) -> int:

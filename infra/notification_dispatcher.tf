@@ -42,3 +42,18 @@ resource "aws_scheduler_schedule" "notification_dispatcher" {
     input    = jsonencode({ operation = "dispatch-notifications" })
   }
 }
+
+resource "aws_scheduler_schedule" "appointment_expiry" {
+  name                = "${local.name}-appointment-expiry"
+  schedule_expression = "rate(5 minutes)"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = module.api.lambda_alias_arn
+    role_arn = aws_iam_role.notification_scheduler.arn
+    input    = jsonencode({ operation = "expire-pending-appointments" })
+  }
+}
