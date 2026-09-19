@@ -8,7 +8,7 @@ from starlette.requests import Request
 
 from app.core.auth import CurrentUser, get_current_user
 from app.core.database import Base, get_session
-from app.doctors.models import Specialty
+from app.doctors.models import DoctorProfile, Specialty
 from app.main import app
 
 
@@ -33,7 +33,7 @@ def test_cognito_group_string_is_parsed() -> None:
     assert get_current_user(request).groups == frozenset({"doctor"})
 
 
-def test_doctor_can_create_and_read_own_profile() -> None:
+def test_admin_manages_profile_doctor_only_manages_schedule() -> None:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -47,20 +47,31 @@ def test_doctor_can_create_and_read_own_profile() -> None:
         session.commit()
         specialty_id = specialty.id
 
+        profile = DoctorProfile(
+            cognito_sub="verified-doctor-sub",
+            specialty_id=specialty_id,
+            display_name="Bác sĩ An",
+            years_experience=5,
+        )
+        session.add(profile)
+        session.commit()
+        doctor_id = profile.id
+
     def session_override():
         with Session(engine) as session:
             yield session
 
     app.dependency_overrides[get_session] = session_override
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        subject="verified-doctor-sub",
-        groups=frozenset({"doctor"}),
+        subject="admin-sub",
+        groups=frozenset({"admin"}),
     )
 
     try:
         client = TestClient(app)
+
         response = client.put(
-            "/api/doctor/me",
+            f"/api/admin/doctors/{doctor_id}",
             json={
                 "specialty_id": specialty_id,
                 "display_name": "Bác sĩ An",
@@ -77,25 +88,8 @@ def test_doctor_can_create_and_read_own_profile() -> None:
         assert response.json()["slot_duration_minutes"] == 30
         assert response.json()["professional_title"] == "Thạc sĩ, Bác sĩ CKI"
 
-        profile_detail = client.get("/api/doctor/me")
-        assert profile_detail.json()["certificates"] == [
-            "Chứng chỉ hành nghề Nội tim mạch"
-        ]
-
-        hourly_slots = client.put(
-            "/api/doctor/me",
-            json={
-                "specialty_id": specialty_id,
-                "display_name": "Bác sĩ An",
-                "years_experience": 10,
-                "slot_duration_minutes": 60,
-            },
-        )
-        assert hourly_slots.status_code == 200
-        assert hourly_slots.json()["slot_duration_minutes"] == 60
-
         invalid_duration = client.put(
-            "/api/doctor/me",
+            f"/api/admin/doctors/{doctor_id}",
             json={
                 "specialty_id": specialty_id,
                 "display_name": "Bác sĩ An",
@@ -105,9 +99,24 @@ def test_doctor_can_create_and_read_own_profile() -> None:
         )
         assert invalid_duration.status_code == 422
 
-        profile = client.get("/api/doctor/me")
-        assert profile.status_code == 200
-        assert profile.json()["specialty"]["slug"] == "tim-mach"
+        # Doctor cannot self-edit anymore — only admin has a write endpoint.
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            subject="verified-doctor-sub",
+            groups=frozenset({"doctor"}),
+        )
+
+        no_self_edit = client.put(
+            "/api/doctor/me",
+            json={"specialty_id": specialty_id, "display_name": "Attacker edit"},
+        )
+        assert no_self_edit.status_code == 405
+
+        profile_detail = client.get("/api/doctor/me")
+        assert profile_detail.status_code == 200
+        assert profile_detail.json()["certificates"] == [
+            "Chứng chỉ hành nghề Nội tim mạch"
+        ]
+        assert profile_detail.json()["specialty"]["slug"] == "tim-mach"
 
         work_date = datetime.now(UTC).date() + timedelta(days=1)
         schedule = client.put(
@@ -137,22 +146,19 @@ def test_doctor_can_create_and_read_own_profile() -> None:
         )
         assert invalid_schedule.status_code == 422
 
-        spoof = client.put(
-            "/api/doctor/me",
-            json={
-                "cognito_sub": "attacker",
-                "specialty_id": specialty_id,
-                "display_name": "Attacker",
-            },
+        # A doctor cannot edit another doctor's profile via the admin endpoint either.
+        forbidden = client.put(
+            f"/api/admin/doctors/{doctor_id}",
+            json={"specialty_id": specialty_id, "display_name": "Attacker edit"},
         )
-        assert spoof.status_code == 422
+        assert forbidden.status_code == 403
 
         app.dependency_overrides[get_current_user] = lambda: CurrentUser(
             subject="patient-sub",
             groups=frozenset({"patient"}),
         )
-        forbidden = client.get("/api/doctor/me")
-        assert forbidden.status_code == 403
+        forbidden_read = client.get("/api/doctor/me")
+        assert forbidden_read.status_code == 403
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

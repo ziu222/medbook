@@ -33,6 +33,10 @@ ACTIVE_STATUSES = ("pending", "confirmed")
 APP_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
 # ponytail: flat caps, not admin-configurable — wire up if abuse/complaints show up.
 MAX_ACTIVE_BOOKINGS_PER_ACCOUNT = 5
+# Raising this past 1 needs a schema change first: AppointmentStatusEvent has
+# UniqueConstraint(appointment_id, to_status), so a second "moved" event for the same
+# appointment would violate it — reschedule_appointment would misreport that as
+# "Slot is not available" (its IntegrityError handler assumes only slot conflicts).
 MAX_FREE_RESCHEDULES = 1
 
 
@@ -270,7 +274,10 @@ def reschedule_appointment(
     )
     if appointment is None or appointment.booker_cognito_sub != subject:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
-    if appointment.status not in ACTIVE_STATUSES:
+    # Unpaid appointments hold their slot on borrowed time (see expire_pending_appointments) —
+    # rescheduling one would extend that hold indefinitely without ever charging for it.
+    # Cancel and rebook instead; only a paid, confirmed slot can be moved.
+    if appointment.status != "confirmed":
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Cannot reschedule appointment with status {appointment.status}",
@@ -571,3 +578,47 @@ def complete_appointment(
     session.commit()
     session.refresh(appointment)
     return appointment
+
+
+def auto_complete_past_appointments(session: Session) -> int:
+    """Auto-completes confirmed appointments whose scheduled end has passed — a doctor
+    who forgets to click "Hoàn tất" would otherwise leave it stuck in confirmed forever."""
+    now = datetime.now(APP_TIMEZONE)
+    candidates = list(
+        session.scalars(
+            select(Appointment)
+            .where(
+                Appointment.status == "confirmed",
+                Appointment.appointment_date <= now.date(),
+            )
+            .with_for_update(skip_locked=True)
+        )
+    )
+    completed = 0
+    for appointment in candidates:
+        appointment_end = datetime.combine(
+            appointment.appointment_date, appointment.end_time, tzinfo=APP_TIMEZONE
+        )
+        if now < appointment_end:
+            continue
+        assignment = session.get(AppointmentPolicyAssignment, appointment.id)
+        if assignment is None:
+            continue
+        session.add(
+            AppointmentStatusEvent(
+                appointment_id=appointment.id,
+                from_status="confirmed",
+                to_status="completed",
+                actor_sub="system",
+                actor_role="admin",
+                reason="Tự động hoàn tất do đã quá giờ khám",
+                policy_id=assignment.policy_id,
+                minutes_before=int((appointment_end - now).total_seconds() // 60),
+                refund_percentage=0,
+                refund_status="not_applicable",
+            )
+        )
+        appointment.status = "completed"
+        completed += 1
+    session.commit()
+    return completed

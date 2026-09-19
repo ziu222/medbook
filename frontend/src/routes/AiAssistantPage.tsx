@@ -90,13 +90,19 @@ export function AiAssistantPage({ authed, onNavigate }: AiAssistantPageProps) {
                 <div style={{ width: '36px', height: '36px', borderRadius: '11px', background: 'var(--brand-grad)' }} />
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '16px' }}>Trợ lý sức khỏe AI</div>
-                  <div style={{ color: 'var(--forest)', fontSize: '13px' }}>● Đang trực tuyến</div>
+                  <div style={{ color: 'var(--forest)', fontSize: '13px' }}>
+                    <span className="pulse-dot">●</span> Đang trực tuyến
+                  </div>
                 </div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {messages.map((m, i) => (
-                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', gap: '4px' }}>
+                  <div
+                    key={i}
+                    className="fade-up"
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', gap: '4px' }}
+                  >
                     <div
                       style={{
                         maxWidth: '80%',

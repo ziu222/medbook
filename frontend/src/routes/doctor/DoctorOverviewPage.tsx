@@ -17,9 +17,12 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
   cancelled: { label: 'Đã hủy', color: '#c0492f', bg: '#fdeceb' },
 };
 
-function StatCard({ value, label }: { value: string; label: string }) {
+function StatCard({ value, label, delayMs }: { value: string; label: string; delayMs: number }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '20px' }}>
+    <div
+      className="fade-up"
+      style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '20px', animationDelay: `${delayMs}ms` }}
+    >
       <div style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-.5px' }}>{value}</div>
       <div style={{ color: 'var(--muted)', fontSize: '14px', marginTop: '4px' }}>{label}</div>
     </div>
@@ -69,10 +72,10 @@ export function DoctorOverviewPage({ authed, onNavigate }: DoctorOverviewPagePro
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '26px' }}>
-                <StatCard value={String(today?.length ?? 0)} label="Cuộc hẹn hôm nay" />
-                <StatCard value={String(pendingToday)} label="Chờ thanh toán hôm nay" />
-                <StatCard value={String(completedThisMonth?.length ?? 0)} label="Đã khám tháng này" />
-                <StatCard value={doctor ? doctor.rating.toFixed(1) : '—'} label="Đánh giá trung bình" />
+                <StatCard value={String(today?.length ?? 0)} label="Cuộc hẹn hôm nay" delayMs={0} />
+                <StatCard value={String(pendingToday)} label="Chờ thanh toán hôm nay" delayMs={60} />
+                <StatCard value={String(completedThisMonth?.length ?? 0)} label="Đã khám tháng này" delayMs={120} />
+                <StatCard value={doctor ? doctor.rating.toFixed(1) : '—'} label="Đánh giá trung bình" delayMs={180} />
               </div>
 
               <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '22px' }}>
@@ -93,7 +96,7 @@ export function DoctorOverviewPage({ authed, onNavigate }: DoctorOverviewPagePro
                       {sortedToday.map((a) => {
                         const status = STATUS_META[a.status] ?? { label: a.status, color: 'var(--muted)', bg: 'var(--tint2)' };
                         return (
-                          <tr key={a.id} style={{ borderTop: '1px solid var(--line)' }}>
+                          <tr key={a.id} className="table-row-hover" style={{ borderTop: '1px solid var(--line)' }}>
                             <td style={{ padding: '12px 10px', fontWeight: 700 }}>{a.patient_full_name}</td>
                             <td style={{ padding: '12px 10px' }}>{a.start_time.slice(0, 5)}</td>
                             <td style={{ padding: '12px 10px', color: 'var(--ink2)' }}>{a.symptoms}</td>

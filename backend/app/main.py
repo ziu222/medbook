@@ -49,6 +49,26 @@ def handler(event, context):
             count = dispatch_notifications(session)
         return {"statusCode": 200, "body": f"{count} notifications queued"}
 
+    if event == {"operation": "expire-pending-appointments"}:
+        from sqlalchemy.orm import Session
+
+        from app.cancellations.service import expire_pending_appointments
+        from app.core.database import get_engine
+
+        with Session(get_engine()) as session:
+            count = expire_pending_appointments(session)
+        return {"statusCode": 200, "body": f"{count} appointments expired"}
+
+    if event == {"operation": "auto-complete-appointments"}:
+        from sqlalchemy.orm import Session
+
+        from app.appointments.service import auto_complete_past_appointments
+        from app.core.database import get_engine
+
+        with Session(get_engine()) as session:
+            count = auto_complete_past_appointments(session)
+        return {"statusCode": 200, "body": f"{count} appointments auto-completed"}
+
     if event.get("Records") and all(
         record.get("eventSource") == "aws:sqs" for record in event["Records"]
     ):

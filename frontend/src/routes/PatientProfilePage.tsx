@@ -155,6 +155,14 @@ export function PatientProfilePage({ authed, onNavigate }: PatientProfilePagePro
 
   const name = profile?.display_name ?? 'Chưa có hồ sơ';
 
+  const completeness = profile
+    ? [profile.display_name, profile.phone_number, profile.date_of_birth].filter(Boolean).length / 3
+    : 0;
+  const RING_SIZE = 96;
+  const RING_STROKE = 4;
+  const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
   return (
     <div style={{ minHeight: '100vh' }}>
       <Header active="profile" authed={authed} onNavigate={onNavigate} />
@@ -183,23 +191,48 @@ export function PatientProfilePage({ authed, onNavigate }: PatientProfilePagePro
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px', alignItems: 'start' }}>
               <aside style={{ position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '20px', padding: '24px', textAlign: 'center' }}>
-                  <div
-                    style={{
-                      width: '88px',
-                      height: '88px',
-                      borderRadius: '24px',
-                      background: 'var(--brand-grad)',
-                      color: '#fff',
-                      display: 'grid',
-                      placeItems: 'center',
-                      fontWeight: 800,
-                      fontSize: '30px',
-                      margin: '0 auto 14px',
-                    }}
-                  >
-                    {profile ? initialsFor(profile.display_name) : '—'}
+                  <div style={{ position: 'relative', width: `${RING_SIZE}px`, height: `${RING_SIZE}px`, margin: '0 auto 14px' }}>
+                    <svg
+                      width={RING_SIZE}
+                      height={RING_SIZE}
+                      style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
+                    >
+                      <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS} fill="none" stroke="var(--tint)" strokeWidth={RING_STROKE} />
+                      <circle
+                        cx={RING_SIZE / 2}
+                        cy={RING_SIZE / 2}
+                        r={RING_RADIUS}
+                        fill="none"
+                        stroke="var(--brand)"
+                        strokeWidth={RING_STROKE}
+                        strokeLinecap="round"
+                        strokeDasharray={RING_CIRCUMFERENCE}
+                        strokeDashoffset={RING_CIRCUMFERENCE * (1 - completeness)}
+                        style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.2,0,0,1)' }}
+                      />
+                    </svg>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: `${RING_STROKE}px`,
+                        borderRadius: '20px',
+                        background: 'var(--brand-grad)',
+                        color: '#fff',
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontWeight: 800,
+                        fontSize: '28px',
+                      }}
+                    >
+                      {profile ? initialsFor(profile.display_name) : '—'}
+                    </div>
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '19px' }}>{name}</div>
+                  {profile && completeness < 1 && (
+                    <div style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '2px' }}>
+                      Hồ sơ hoàn thiện {Math.round(completeness * 100)}%
+                    </div>
+                  )}
                   {email && <div style={{ color: 'var(--muted)', fontSize: '14px', marginTop: '3px', wordBreak: 'break-all' }}>{email}</div>}
                 </div>
                 <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '20px', padding: '12px' }}>

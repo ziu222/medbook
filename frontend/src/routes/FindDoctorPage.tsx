@@ -164,7 +164,7 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '22px' }}>
                 <label
                   onClick={() => setSelectedSpecialtyId(null)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: selectedSpecialtyId === null ? 'var(--ink)' : 'var(--ink2)', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: selectedSpecialtyId === null ? 'var(--ink)' : 'var(--ink2)', cursor: 'pointer', transition: 'color 0.15s ease' }}
                 >
                   {selectedSpecialtyId === null ? (
                     <span className="check-pop" style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -181,7 +181,7 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
                   <label
                     key={sp.id}
                     onClick={() => setSelectedSpecialtyId(sp.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: selectedSpecialtyId === sp.id ? 'var(--ink)' : 'var(--ink2)', cursor: 'pointer' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', color: selectedSpecialtyId === sp.id ? 'var(--ink)' : 'var(--ink2)', cursor: 'pointer', transition: 'color 0.15s ease' }}
                   >
                     {selectedSpecialtyId === sp.id ? (
                       <span className="check-pop" style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -277,6 +277,22 @@ export function FindDoctorPage({ authed, onNavigate, onSelectDoctor }: FindDocto
                 </div>
               ) : results.length === 0 ? (
                 <div className="fade-up" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>
+                  <div
+                    style={{
+                      width: '72px',
+                      height: '72px',
+                      borderRadius: '50%',
+                      background: 'var(--tint2)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      margin: '0 auto 18px',
+                    }}
+                  >
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="10.5" cy="10.5" r="6.5" />
+                      <path d="m20 20-4.3-4.3" />
+                    </svg>
+                  </div>
                   Không tìm thấy bác sĩ phù hợp với bộ lọc.
                 </div>
               ) : (

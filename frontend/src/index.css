@@ -325,6 +325,25 @@ button {
   transform: translateX(4px);
 }
 
+/* Scroll-triggered stagger reveal — pairs with useRevealOnScroll. Each item sets its
+   own transitionDelay for the cascade; .reveal-active is added once the section enters view. */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0, 0, 1),
+    transform 0.5s cubic-bezier(0.2, 0, 0, 1);
+}
+.reveal-item.reveal-active {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-item {
+    transition-duration: 0.01s;
+  }
+}
+
 @keyframes pulseDot {
   0%,
   100% {
@@ -333,4 +352,16 @@ button {
   50% {
     opacity: 0.35;
   }
+}
+.pulse-dot {
+  display: inline-block;
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+/* Row hover for plain data tables (dashboards) — mirrors .card-hover's intent without the lift. */
+.table-row-hover {
+  transition: background 0.15s ease;
+}
+.table-row-hover:hover {
+  background: var(--tint2);
 }

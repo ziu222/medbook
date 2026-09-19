@@ -1,14 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { DoctorShell } from '../../components/Common/DoctorShell';
-import {
-  ApiError,
-  fetchFacilities,
-  fetchSpecialties,
-  saveMyDoctorProfile,
-  type DoctorDetail,
-  type Facility,
-  type Specialty,
-} from '../../lib/api';
+import type { DoctorDetail } from '../../lib/api';
 import type { DoctorNavKey } from '../../lib/doctorRoutes';
 
 interface DoctorAccountPageProps {
@@ -16,68 +8,14 @@ interface DoctorAccountPageProps {
   onNavigate: (key: DoctorNavKey) => void;
 }
 
-const fieldStyle: CSSProperties = {
-  padding: '11px 14px',
-  borderRadius: '11px',
-  border: '1px solid var(--line)',
-  fontSize: '14.5px',
-  outline: 'none',
-  width: '100%',
-};
+const rowStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '4px' };
+const labelStyle: CSSProperties = { fontWeight: 700, fontSize: '13px', color: 'var(--muted)' };
+const valueStyle: CSSProperties = { fontSize: '15px' };
 
-const labelStyle: CSSProperties = { fontWeight: 700, fontSize: '13.5px', marginBottom: '6px', display: 'block' };
-
-function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [displayName, setDisplayName] = useState(doctor?.display_name ?? '');
-  const [specialtyId, setSpecialtyId] = useState<number | ''>(doctor?.specialty.id ?? '');
-  const [facilityId, setFacilityId] = useState<number | ''>(doctor?.facility?.id ?? '');
-  const [clinicName, setClinicName] = useState(doctor?.clinic_name ?? '');
-  const [professionalTitle, setProfessionalTitle] = useState(doctor?.professional_title ?? '');
-  const [certificatesText, setCertificatesText] = useState((doctor?.certificates ?? []).join(', '));
-  const [yearsExperience, setYearsExperience] = useState(String(doctor?.years_experience ?? 0));
-  const [slotDuration, setSlotDuration] = useState<30 | 60>(doctor?.slot_duration_minutes === 60 ? 60 : 30);
-  const [bio, setBio] = useState(doctor?.bio ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    fetchSpecialties().then(setSpecialties).catch(() => setSpecialties([]));
-    fetchFacilities().then(setFacilities).catch(() => setFacilities([]));
-  }, []);
-
-  const canSave = displayName.trim().length > 0 && specialtyId !== '' && !saving;
-
-  const handleSave = async () => {
-    if (!canSave) return;
-    setSaving(true);
-    setError(null);
-    setSaved(false);
-    try {
-      await saveMyDoctorProfile({
-        specialty_id: specialtyId,
-        facility_id: facilityId === '' ? null : facilityId,
-        display_name: displayName.trim(),
-        bio: bio.trim() || null,
-        clinic_name: clinicName.trim() || null,
-        professional_title: professionalTitle.trim() || null,
-        certificates: certificatesText
-          .split(',')
-          .map((c) => c.trim())
-          .filter(Boolean),
-        years_experience: Number(yearsExperience) || 0,
-        slot_duration_minutes: slotDuration,
-        avatar_url: doctor?.avatar_url ?? null,
-      });
-      setSaved(true);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Lưu hồ sơ thất bại.');
-    } finally {
-      setSaving(false);
-    }
-  };
+function DoctorAccountView({ doctor }: { doctor: DoctorDetail | null }) {
+  if (!doctor) {
+    return <div style={{ color: 'var(--muted)', fontSize: '14.5px' }}>Chưa có hồ sơ. Liên hệ quản trị viên để được khởi tạo tài khoản.</div>;
+  }
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -96,106 +34,53 @@ function DoctorAccountForm({ doctor }: { doctor: DoctorDetail | null }) {
             flexShrink: 0,
           }}
         >
-          {(displayName || 'BS').slice(0, 2).toUpperCase()}
+          {doctor.display_name.slice(0, 2).toUpperCase()}
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: '18px' }}>{displayName || 'Bác sĩ mới'}</div>
-          <div style={{ color: 'var(--muted)', fontSize: '14px' }}>
-            {specialties.find((s) => s.id === specialtyId)?.name ?? 'Chưa chọn chuyên khoa'}
-          </div>
+          <div style={{ fontWeight: 800, fontSize: '18px' }}>{doctor.display_name}</div>
+          <div style={{ color: 'var(--muted)', fontSize: '14px' }}>{doctor.specialty.name}</div>
         </div>
       </div>
 
       <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        <div>
-          <label style={labelStyle}>Họ và tên</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={fieldStyle} placeholder="BS.CKII Nguyễn Văn A" />
+        <div style={{ color: 'var(--muted)', fontSize: '13.5px' }}>
+          Chỉ quản trị viên mới có thể chỉnh sửa hồ sơ này. Liên hệ quản trị viên nếu thông tin cần cập nhật.
+        </div>
+
+        <div style={rowStyle}>
+          <span style={labelStyle}>Cơ sở khám</span>
+          <span style={valueStyle}>{doctor.facility?.name ?? '—'}</span>
+        </div>
+
+        <div style={rowStyle}>
+          <span style={labelStyle}>Tên phòng khám</span>
+          <span style={valueStyle}>{doctor.clinic_name ?? '—'}</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={labelStyle}>Chuyên khoa</label>
-            <select value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value ? Number(e.target.value) : '')} style={fieldStyle}>
-              <option value="">— Chọn chuyên khoa —</option>
-              {specialties.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Số năm kinh nghiệm</span>
+            <span style={valueStyle}>{doctor.years_experience}</span>
           </div>
-          <div>
-            <label style={labelStyle}>Cơ sở khám</label>
-            <select value={facilityId} onChange={(e) => setFacilityId(e.target.value ? Number(e.target.value) : '')} style={fieldStyle}>
-              <option value="">— Không chọn —</option>
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Thời lượng 1 ca khám</span>
+            <span style={valueStyle}>{doctor.slot_duration_minutes} phút</span>
           </div>
         </div>
 
-        <div>
-          <label style={labelStyle}>Tên phòng khám (hiển thị công khai)</label>
-          <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch An Khang" />
+        <div style={rowStyle}>
+          <span style={labelStyle}>Level / học vị</span>
+          <span style={valueStyle}>{doctor.professional_title ?? '—'}</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div>
-            <label style={labelStyle}>Số năm kinh nghiệm</label>
-            <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Thời lượng 1 ca khám</label>
-            <select value={slotDuration} onChange={(e) => setSlotDuration(Number(e.target.value) === 60 ? 60 : 30)} style={fieldStyle}>
-              <option value={30}>30 phút</option>
-              <option value={60}>1 giờ</option>
-            </select>
-          </div>
+        <div style={rowStyle}>
+          <span style={labelStyle}>Chứng chỉ</span>
+          <span style={valueStyle}>{doctor.certificates.length ? doctor.certificates.join(', ') : '—'}</span>
         </div>
 
-        <div>
-          <label style={labelStyle}>Level / học vị (VD: Thạc sĩ, Bác sĩ CKI...)</label>
-          <input value={professionalTitle} onChange={(e) => setProfessionalTitle(e.target.value)} style={fieldStyle} placeholder="Thạc sĩ, Bác sĩ CKII" />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Chứng chỉ (mỗi chứng chỉ cách nhau bởi dấu phẩy)</label>
-          <input
-            value={certificatesText}
-            onChange={(e) => setCertificatesText(e.target.value)}
-            style={fieldStyle}
-            placeholder="Chứng chỉ hành nghề Nội tim mạch, Chứng nhận ACLS"
-          />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Giới thiệu</label>
-          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={4} maxLength={5000} style={{ ...fieldStyle, resize: 'vertical' }} />
-        </div>
-
-        {error && <div style={{ color: '#c0492f', fontSize: '13.5px' }}>{error}</div>}
-        {saved && !error && <div style={{ color: 'var(--brand-d)', fontSize: '13.5px' }}>Đã lưu hồ sơ.</div>}
-
-        <div>
-          <span
-            onClick={canSave ? handleSave : undefined}
-            className={canSave ? 'btn-hover' : undefined}
-            style={{
-              display: 'inline-block',
-              padding: '12px 26px',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '14.5px',
-              cursor: canSave ? 'pointer' : 'not-allowed',
-              background: canSave ? 'var(--brand-grad)' : 'var(--line)',
-              color: canSave ? '#fff' : 'var(--faint)',
-            }}
-          >
-            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </span>
+        <div style={rowStyle}>
+          <span style={labelStyle}>Giới thiệu</span>
+          <span style={valueStyle}>{doctor.bio ?? '—'}</span>
         </div>
       </div>
     </div>
@@ -207,11 +92,9 @@ export function DoctorAccountPage({ authed, onNavigate }: DoctorAccountPageProps
     <DoctorShell active="profile" authed={authed} onNavigate={onNavigate}>
       {(doctor) => (
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 4px' }}>Hồ sơ & Cài đặt</h1>
-          <div style={{ color: 'var(--muted)', fontSize: '14.5px', marginBottom: '22px' }}>
-            {doctor ? 'Quản lý thông tin hồ sơ khám bệnh' : 'Hoàn thiện hồ sơ để bắt đầu nhận lịch hẹn'}
-          </div>
-          <DoctorAccountForm doctor={doctor} />
+          <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 4px' }}>Hồ sơ</h1>
+          <div style={{ color: 'var(--muted)', fontSize: '14.5px', marginBottom: '22px' }}>Xem thông tin hồ sơ khám bệnh của bạn</div>
+          <DoctorAccountView doctor={doctor} />
         </div>
       )}
     </DoctorShell>

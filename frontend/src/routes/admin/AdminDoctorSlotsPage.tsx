@@ -87,6 +87,7 @@ function DoctorSlotsPanel({ doctorId }: { doctorId: number }) {
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[] | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const [showAddBlock, setShowAddBlock] = useState(false);
+  const [removingIds, setRemovingIds] = useState<Set<number>>(new Set());
 
   const dateFrom = toIsoDate(new Date());
   const dateTo = toIsoDate(new Date(Date.now() + RANGE_DAYS * 86_400_000));
@@ -98,6 +99,15 @@ function DoctorSlotsPanel({ doctorId }: { doctorId: number }) {
   }, [doctorId, dateFrom, dateTo, reloadTick]);
 
   const reload = () => setReloadTick((t) => t + 1);
+
+  const handleUnblock = (id: number) => {
+    setRemovingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      deleteAdminBlockedSlot(doctorId, id)
+        .then(reload)
+        .catch(() => setRemovingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }));
+    }, 180);
+  };
 
   return (
     <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '22px', maxWidth: '640px' }}>
@@ -114,14 +124,27 @@ function DoctorSlotsPanel({ doctorId }: { doctorId: number }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {blockedSlots.map((b) => (
-            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '11px', background: 'var(--tint2)' }}>
+            <div
+              key={b.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '9px 12px',
+                borderRadius: '11px',
+                background: 'var(--tint2)',
+                opacity: removingIds.has(b.id) ? 0 : 1,
+                transform: removingIds.has(b.id) ? 'translateX(8px)' : undefined,
+                transition: 'opacity 0.18s ease, transform 0.18s ease',
+              }}
+            >
               <span style={{ fontWeight: 700, fontSize: '14px' }}>{b.block_date}</span>
               <span style={{ fontWeight: 700, fontSize: '14px' }}>
                 {b.start_time.slice(0, 5)} – {b.end_time.slice(0, 5)}
               </span>
               {b.reason && <span style={{ color: 'var(--muted)', fontSize: '13px' }}>· {b.reason}</span>}
               <span
-                onClick={() => deleteAdminBlockedSlot(doctorId, b.id).then(reload).catch(() => {})}
+                onClick={() => handleUnblock(b.id)}
                 className="link-hover"
                 style={{ marginLeft: 'auto', color: '#c0492f', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
               >

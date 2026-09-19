@@ -1,8 +1,18 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ApiError, createDoctorAccount, fetchFacilities, fetchSpecialties, type Facility, type Specialty } from '../../lib/api';
-import { getUserRole, redirectToLogin } from '../../lib/auth';
 import { AdminTabs } from '../../components/Common/AdminTabs';
 import { SuccessNote } from '../../components/Common/SuccessNote';
+import {
+  ApiError,
+  fetchDoctor,
+  fetchDoctors,
+  fetchFacilities,
+  fetchSpecialties,
+  updateDoctorProfile,
+  type DoctorDetail,
+  type Facility,
+  type Specialty,
+} from '../../lib/api';
+import { getUserRole, redirectToLogin } from '../../lib/auth';
 
 const fieldStyle: CSSProperties = {
   padding: '11px 14px',
@@ -15,16 +25,18 @@ const fieldStyle: CSSProperties = {
 
 const labelStyle: CSSProperties = { fontWeight: 700, fontSize: '13.5px', marginBottom: '6px', display: 'block' };
 
-function CreateDoctorForm() {
+function EditDoctorForm({ doctorId, doctor }: { doctorId: number; doctor: DoctorDetail }) {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [specialtyId, setSpecialtyId] = useState<number | ''>('');
-  const [facilityId, setFacilityId] = useState<number | ''>('');
-  const [clinicName, setClinicName] = useState('');
-  const [yearsExperience, setYearsExperience] = useState('0');
-  const [bio, setBio] = useState('');
+  const [displayName, setDisplayName] = useState(doctor.display_name);
+  const [specialtyId, setSpecialtyId] = useState<number | ''>(doctor.specialty.id);
+  const [facilityId, setFacilityId] = useState<number | ''>(doctor.facility?.id ?? '');
+  const [clinicName, setClinicName] = useState(doctor.clinic_name ?? '');
+  const [professionalTitle, setProfessionalTitle] = useState(doctor.professional_title ?? '');
+  const [certificatesText, setCertificatesText] = useState(doctor.certificates.join(', '));
+  const [yearsExperience, setYearsExperience] = useState(String(doctor.years_experience));
+  const [slotDuration, setSlotDuration] = useState<30 | 60>(doctor.slot_duration_minutes === 60 ? 60 : 30);
+  const [bio, setBio] = useState(doctor.bio ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -34,7 +46,7 @@ function CreateDoctorForm() {
     fetchFacilities().then(setFacilities).catch(() => setFacilities([]));
   }, []);
 
-  const canSave = email.trim().length > 0 && displayName.trim().length > 0 && specialtyId !== '' && !saving;
+  const canSave = displayName.trim().length > 0 && specialtyId !== '' && !saving;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -42,26 +54,24 @@ function CreateDoctorForm() {
     setError(null);
     setSaved(false);
     try {
-      await createDoctorAccount({
-        email: email.trim(),
+      await updateDoctorProfile(doctorId, {
         specialty_id: specialtyId,
         facility_id: facilityId === '' ? null : facilityId,
         display_name: displayName.trim(),
         bio: bio.trim() || null,
         clinic_name: clinicName.trim() || null,
+        professional_title: professionalTitle.trim() || null,
+        certificates: certificatesText
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean),
         years_experience: Number(yearsExperience) || 0,
-        avatar_url: null,
+        slot_duration_minutes: slotDuration,
+        avatar_url: doctor.avatar_url,
       });
       setSaved(true);
-      setEmail('');
-      setDisplayName('');
-      setSpecialtyId('');
-      setFacilityId('');
-      setClinicName('');
-      setYearsExperience('0');
-      setBio('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Tạo tài khoản thất bại.');
+      setError(err instanceof ApiError ? err.message : 'Lưu hồ sơ thất bại.');
     } finally {
       setSaving(false);
     }
@@ -70,13 +80,8 @@ function CreateDoctorForm() {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '18px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '640px' }}>
       <div>
-        <label style={labelStyle}>Email đăng nhập</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} style={fieldStyle} placeholder="bacsi@benhvien.vn" />
-      </div>
-
-      <div>
         <label style={labelStyle}>Họ và tên</label>
-        <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={fieldStyle} placeholder="BS.CKII Nguyễn Văn A" />
+        <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={fieldStyle} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -106,12 +111,31 @@ function CreateDoctorForm() {
 
       <div>
         <label style={labelStyle}>Tên phòng khám (hiển thị công khai)</label>
-        <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} placeholder="Vd: Phòng khám Tim mạch An Khang" />
+        <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} style={fieldStyle} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div>
+          <label style={labelStyle}>Số năm kinh nghiệm</label>
+          <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Thời lượng 1 ca khám</label>
+          <select value={slotDuration} onChange={(e) => setSlotDuration(Number(e.target.value) === 60 ? 60 : 30)} style={fieldStyle}>
+            <option value={30}>30 phút</option>
+            <option value={60}>1 giờ</option>
+          </select>
+        </div>
       </div>
 
       <div>
-        <label style={labelStyle}>Số năm kinh nghiệm</label>
-        <input type="number" min={0} max={80} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} style={fieldStyle} />
+        <label style={labelStyle}>Level / học vị (VD: Thạc sĩ, Bác sĩ CKI...)</label>
+        <input value={professionalTitle} onChange={(e) => setProfessionalTitle(e.target.value)} style={fieldStyle} />
+      </div>
+
+      <div>
+        <label style={labelStyle}>Chứng chỉ (mỗi chứng chỉ cách nhau bởi dấu phẩy)</label>
+        <input value={certificatesText} onChange={(e) => setCertificatesText(e.target.value)} style={fieldStyle} />
       </div>
 
       <div>
@@ -120,7 +144,7 @@ function CreateDoctorForm() {
       </div>
 
       {error && <div style={{ color: '#c0492f', fontSize: '13.5px' }}>{error}</div>}
-      {saved && !error && <SuccessNote text="Đã tạo tài khoản bác sĩ. Mật khẩu tạm thời đã được gửi qua email." />}
+      {saved && !error && <SuccessNote text="Đã lưu hồ sơ." />}
 
       <div>
         <span
@@ -137,15 +161,34 @@ function CreateDoctorForm() {
             color: canSave ? '#fff' : 'var(--faint)',
           }}
         >
-          {saving ? 'Đang tạo...' : 'Tạo tài khoản bác sĩ'}
+          {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </span>
       </div>
     </div>
   );
 }
 
-export function AdminCreateDoctorPage({ authed }: { authed: boolean }) {
+function DoctorEditPanel({ doctorId }: { doctorId: number }) {
+  const [doctor, setDoctor] = useState<DoctorDetail | null>(null);
+
+  useEffect(() => {
+    setDoctor(null);
+    fetchDoctor(doctorId).then(setDoctor).catch(() => setDoctor(null));
+  }, [doctorId]);
+
+  if (!doctor) return <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Đang tải...</div>;
+  return <EditDoctorForm key={doctorId} doctorId={doctorId} doctor={doctor} />;
+}
+
+export function AdminEditDoctorPage({ authed }: { authed: boolean }) {
   const isAdmin = authed && getUserRole() === 'admin';
+  const [doctors, setDoctors] = useState<{ id: number; display_name: string; specialty: { name: string } }[]>([]);
+  const [doctorId, setDoctorId] = useState<number | ''>('');
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchDoctors({ limit: 100 }).then(setDoctors).catch(() => setDoctors([]));
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -170,12 +213,25 @@ export function AdminCreateDoctorPage({ authed }: { authed: boolean }) {
 
   return (
     <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '36px 32px' }}>
-      <AdminTabs active="/admin/tao-bac-si" />
-      <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 4px' }}>Tạo tài khoản bác sĩ</h1>
+      <AdminTabs active="/admin/sua-bac-si" />
+      <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px', margin: '0 0 4px' }}>Sửa hồ sơ bác sĩ</h1>
       <div style={{ color: 'var(--muted)', fontSize: '14.5px', marginBottom: '22px' }}>
-        Bác sĩ không tự đăng ký — quản trị viên tạo tài khoản và điền hồ sơ tại đây.
+        Bác sĩ không tự sửa được hồ sơ — quản trị viên cập nhật thông tin tại đây.
       </div>
-      <CreateDoctorForm />
+
+      <div style={{ marginBottom: '22px', maxWidth: '360px' }}>
+        <label style={labelStyle}>Chọn bác sĩ</label>
+        <select value={doctorId} onChange={(e) => setDoctorId(e.target.value ? Number(e.target.value) : '')} style={fieldStyle}>
+          <option value="">— Chọn bác sĩ —</option>
+          {doctors.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.display_name} · {d.specialty.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {doctorId !== '' && <DoctorEditPanel doctorId={doctorId} />}
     </main>
   );
 }

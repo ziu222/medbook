@@ -45,20 +45,28 @@ const NAV_ITEMS: { key: DoctorNavKey; label: string; icon: ReactElement }[] = [
   { key: 'profile', label: 'Hồ sơ & Cài đặt', icon: profileIcon },
 ];
 
+const ROW_HEIGHT = 41;
+const ROW_GAP = 4;
+
 const itemStyle = (isActive: boolean): CSSProperties => ({
   display: 'flex',
   alignItems: 'center',
   gap: '12px',
   padding: '11px 14px',
+  height: `${ROW_HEIGHT}px`,
   borderRadius: '12px',
   fontWeight: isActive ? 700 : 600,
   fontSize: '14.5px',
   cursor: 'pointer',
   color: isActive ? '#fff' : 'var(--tint2)',
-  background: isActive ? 'var(--brand)' : 'transparent',
+  position: 'relative',
+  zIndex: 1,
+  transition: 'color 0.2s ease',
+  boxSizing: 'border-box',
 });
 
 export function DoctorSidebar({ active, doctorName, specialtyName, onNavigate }: DoctorSidebarProps) {
+  const activeIndex = NAV_ITEMS.findIndex((item) => item.key === active);
   return (
     <aside
       style={{
@@ -80,7 +88,20 @@ export function DoctorSidebar({ active, doctorName, specialtyName, onNavigate }:
         </span>
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+      <nav style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: `${ROW_GAP}px`, flex: 1 }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: `${ROW_HEIGHT}px`,
+            borderRadius: '12px',
+            background: 'var(--brand)',
+            transform: `translateY(${activeIndex * (ROW_HEIGHT + ROW_GAP)}px)`,
+            transition: 'transform 0.25s cubic-bezier(0.2,0,0,1)',
+          }}
+        />
         {NAV_ITEMS.map((item) => (
           <div key={item.key} style={itemStyle(item.key === active)} onClick={() => onNavigate(item.key)}>
             {item.icon}

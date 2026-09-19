@@ -14,6 +14,7 @@ import { DoctorSchedulePage } from './routes/doctor/DoctorSchedulePage';
 import { DoctorAppointmentsPage } from './routes/doctor/DoctorAppointmentsPage';
 import { DoctorAccountPage } from './routes/doctor/DoctorAccountPage';
 import { AdminCreateDoctorPage } from './routes/admin/AdminCreateDoctorPage';
+import { AdminEditDoctorPage } from './routes/admin/AdminEditDoctorPage';
 import { AdminDoctorSlotsPage } from './routes/admin/AdminDoctorSlotsPage';
 import { AdminCancellationPolicyPage } from './routes/admin/AdminCancellationPolicyPage';
 import { ScrollToTop } from './components/Common/ScrollToTop';
@@ -138,6 +139,7 @@ function App() {
         <Route path={DOCTOR_PATHS.appointments} element={<DoctorAppointments authed={authed} />} />
         <Route path={DOCTOR_PATHS.profile} element={<DoctorAccount authed={authed} />} />
         <Route path="/admin/tao-bac-si" element={<AdminCreateDoctorPage authed={authed} />} />
+        <Route path="/admin/sua-bac-si" element={<AdminEditDoctorPage authed={authed} />} />
         <Route path="/admin/khoa-lich-bac-si" element={<AdminDoctorSlotsPage authed={authed} />} />
         <Route path="/admin/hoan-tien" element={<AdminCancellationPolicyPage authed={authed} />} />
         <Route path="*" element={<NotFoundPage authed={authed} />} />
