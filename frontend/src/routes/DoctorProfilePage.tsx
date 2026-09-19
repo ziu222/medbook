@@ -168,11 +168,13 @@ function ReviewsCard({ rating, reviews }: { rating: number; reviews: DoctorRevie
               <div style={{ flex: 1, height: '8px', borderRadius: '999px', background: 'var(--tint)' }}>
                 <div
                   style={{
-                    width: active ? `${percent}%` : '0%',
+                    width: `${percent}%`,
                     height: '8px',
                     borderRadius: '999px',
                     background: 'var(--gold)',
-                    transition: 'width 0.8s cubic-bezier(0.2,0,0,1)',
+                    transform: active ? 'scaleX(1)' : 'scaleX(0)',
+                    transformOrigin: 'left',
+                    transition: 'transform 0.8s cubic-bezier(0.2,0,0,1)',
                   }}
                 />
               </div>
