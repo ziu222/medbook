@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ApiError, createDoctorAccount, fetchFacilities, fetchSpecialties, type Facility, type Specialty } from '../../lib/api';
 import { getUserRole, redirectToLogin } from '../../lib/auth';
 import { AdminTabs } from '../../components/Common/AdminTabs';
+import { SuccessNote } from '../../components/Common/SuccessNote';
 
 const fieldStyle: CSSProperties = {
   padding: '11px 14px',
@@ -119,7 +120,7 @@ function CreateDoctorForm() {
       </div>
 
       {error && <div style={{ color: '#c0492f', fontSize: '13.5px' }}>{error}</div>}
-      {saved && !error && <div style={{ color: 'var(--brand-d)', fontSize: '13.5px' }}>Đã tạo tài khoản bác sĩ. Mật khẩu tạm thời đã được gửi qua email.</div>}
+      {saved && !error && <SuccessNote text="Đã tạo tài khoản bác sĩ. Mật khẩu tạm thời đã được gửi qua email." />}
 
       <div>
         <span

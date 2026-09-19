@@ -860,6 +860,22 @@ export function MyAppointmentsPage({ authed, onNavigate, onSelectDoctor }: MyApp
             </div>
           ) : appointments.length === 0 ? (
             <div className="fade-up" style={{ textAlign: 'center', padding: '60px 0' }}>
+              <div
+                style={{
+                  width: '72px',
+                  height: '72px',
+                  borderRadius: '50%',
+                  background: 'var(--tint2)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  margin: '0 auto 20px',
+                }}
+              >
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="16" rx="2.5" />
+                  <path d="M3 10h18M8 3v4M16 3v4" />
+                </svg>
+              </div>
               <div style={{ color: 'var(--muted)', marginBottom: '18px' }}>Bạn chưa có lịch hẹn nào.</div>
               <span
                 onClick={() => onNavigate('find')}

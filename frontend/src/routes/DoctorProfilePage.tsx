@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, type NavKey } from '../components/Common/Header';
 import { Footer } from '../components/Common/Footer';
 import { LoadingSpinner } from '../components/Common/LoadingSpinner';
+import { useCountUp } from '../hooks/useCountUp';
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import {
   ApiError,
   bookAppointment,
@@ -147,12 +149,15 @@ function ratingBars(rating: number): { star: number; percent: number }[] {
 const REVIEW_DATE_FORMAT = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function ReviewsCard({ rating, reviews }: { rating: number; reviews: DoctorReview[] | null }) {
+  const { ref, active } = useRevealOnScroll<HTMLDivElement>(0.4);
+  const animatedRating = useCountUp(rating, active);
+
   return (
-    <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '22px', padding: '30px' }}>
+    <div ref={ref} style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '22px', padding: '30px' }}>
       <h2 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 22px' }}>Đánh giá từ bệnh nhân</h2>
       <div style={{ display: 'flex', gap: '30px', alignItems: 'center', marginBottom: '24px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '-1.5px', lineHeight: 1 }}>{rating.toFixed(1)}</div>
+          <div style={{ fontSize: '52px', fontWeight: 800, letterSpacing: '-1.5px', lineHeight: 1 }}>{animatedRating.toFixed(1)}</div>
           <div style={{ color: 'var(--gold)', fontSize: '15px', letterSpacing: '2px' }}>{'★'.repeat(Math.round(rating))}</div>
           <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginTop: '4px' }}>{reviews?.length ?? 0} đánh giá</div>
         </div>
@@ -161,7 +166,15 @@ function ReviewsCard({ rating, reviews }: { rating: number; reviews: DoctorRevie
             <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13.5px', color: 'var(--muted)' }}>
               <span style={{ width: '10px' }}>{star}</span>
               <div style={{ flex: 1, height: '8px', borderRadius: '999px', background: 'var(--tint)' }}>
-                <div style={{ width: `${percent}%`, height: '8px', borderRadius: '999px', background: 'var(--gold)' }} />
+                <div
+                  style={{
+                    width: active ? `${percent}%` : '0%',
+                    height: '8px',
+                    borderRadius: '999px',
+                    background: 'var(--gold)',
+                    transition: 'width 0.8s cubic-bezier(0.2,0,0,1)',
+                  }}
+                />
               </div>
               <span style={{ width: '34px', textAlign: 'right' }}>{percent}%</span>
             </div>

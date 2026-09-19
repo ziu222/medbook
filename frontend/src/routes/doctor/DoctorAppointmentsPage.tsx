@@ -221,7 +221,7 @@ function AppointmentRow({ appointment, onChanged }: { appointment: AppointmentRe
 
   return (
     <>
-    <tr style={{ borderTop: '1px solid var(--line)' }}>
+    <tr className="table-row-hover" style={{ borderTop: '1px solid var(--line)' }}>
       <td style={{ padding: '13px 10px', fontWeight: 700 }}>
         {appointment.patient_full_name}
         {appointment.booking_for === 'relative' && (
@@ -316,6 +316,7 @@ export function DoctorAppointmentsPage({ authed, onNavigate }: DoctorAppointment
                   background: statusFilter === f.key ? 'var(--brand-grad)' : '#fff',
                   color: statusFilter === f.key ? '#fff' : 'var(--ink2)',
                   border: statusFilter === f.key ? 'none' : '1px solid var(--line)',
+                  transition: 'background 0.2s ease, color 0.2s ease, border-color 0.2s ease',
                 }}
               >
                 {f.label}

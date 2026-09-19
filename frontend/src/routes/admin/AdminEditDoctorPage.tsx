@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { AdminTabs } from '../../components/Common/AdminTabs';
+import { SuccessNote } from '../../components/Common/SuccessNote';
 import {
   ApiError,
   fetchDoctor,
@@ -143,7 +144,7 @@ function EditDoctorForm({ doctorId, doctor }: { doctorId: number; doctor: Doctor
       </div>
 
       {error && <div style={{ color: '#c0492f', fontSize: '13.5px' }}>{error}</div>}
-      {saved && !error && <div style={{ color: 'var(--brand-d)', fontSize: '13.5px' }}>Đã lưu hồ sơ.</div>}
+      {saved && !error && <SuccessNote text="Đã lưu hồ sơ." />}
 
       <div>
         <span

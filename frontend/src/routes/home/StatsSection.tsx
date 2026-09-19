@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useCountUp } from '../../hooks/useCountUp';
 import { hospitalStats } from '../../lib/mockContent';
 
 function parseStat(num: string): { target: number; suffix: string } {
@@ -6,43 +7,12 @@ function parseStat(num: string): { target: number; suffix: string } {
   return match ? { target: Number(match[1]), suffix: match[2] } : { target: 0, suffix: num };
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3;
-}
-
-function useCountUp(target: number, active: boolean, delayMs: number): number {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (!active) return;
-    const durationMs = 900;
-    let raf = 0;
-    const start = performance.now() + delayMs;
-
-    const tick = (now: number) => {
-      const elapsed = now - start;
-      if (elapsed < 0) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      const t = Math.min(elapsed / durationMs, 1);
-      setValue(Math.round(easeOutCubic(t) * target));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active, target, delayMs]);
-
-  return value;
-}
-
 function StatNumber({ num, active, delayMs }: { num: string; active: boolean; delayMs: number }) {
   const { target, suffix } = parseStat(num);
   const value = useCountUp(target, active, delayMs);
   return (
     <>
-      {value}
+      {Math.round(value)}
       {suffix}
     </>
   );

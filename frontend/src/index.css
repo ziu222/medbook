@@ -353,3 +353,15 @@ button {
     opacity: 0.35;
   }
 }
+.pulse-dot {
+  display: inline-block;
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+/* Row hover for plain data tables (dashboards) — mirrors .card-hover's intent without the lift. */
+.table-row-hover {
+  transition: background 0.15s ease;
+}
+.table-row-hover:hover {
+  background: var(--tint2);
+}
